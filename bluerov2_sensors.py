@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-#~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:169.254.77.254:14550
-#ros2 launch mavros apm.launch fcu_url:=udp://127.0.0.1:14550@14555 gcs_url:=udp://:14550@169.254.77.254:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
+#~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUUURRR IPPPP:14550
+#ros2 launch mavros apm.launch fcu_url:=udp://127.0.0.1:14550@14555 gcs_url:=udp://:14550@YOUUURRR IPPP:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
 
 import rclpy
 from rclpy.node import Node
