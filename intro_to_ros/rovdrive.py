@@ -15,12 +15,40 @@
 import rclpy
 from rclpy.node import Node
 from mavros_msgs.srv import CommandBool
-from mavros_msgs.msg import OverrideRCIn, State
+from mavros_msgs.msg import OverrideRCIn, State, Imu
 from mavros_msgs.srv import SetMode
 from time import sleep
-
+from std_msgs.msg import Float32
+import tf_transformations
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDurabilityPolicy
 
+
+class PIDController:
+    def __init__(self, kp, ki, kd, max_integral, min_output, max_output):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.max_integral = max_integral
+        self.min_output = min_output
+        self.max_output = max_output
+        self.integral = 0.0
+        self.previous_error = 0.0
+
+    def reset(self):
+        self.integral = 0.0
+        self.previous_error = 0.0
+
+    def compute(self, error, dt):
+        self.integral += error * dt
+        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)  # Anti-windup
+
+        derivative = (error - self.previous_error) / dt
+        output = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
+        output = max(min(output, self.max_output), self.min_output)  # Clamp to max/min output
+
+        self.previous_error = error
+        return output
+    
 class RovArmDisarmNode(Node):
     def __init__(self):
         super().__init__('arm_disarm')
@@ -102,12 +130,55 @@ class MoveNode(Node):
             "/mavros/rc/override", #Topic name
             10
         )
+        self.imu_subscription = self.create_subscription(Imu, '/mavros/imu/data', self.imu_callback, 10)
+        self.depth_subscription = self.create_subscription(Float32, '/mavros/depth', self.depth_callback, 10)
+        
+        self.current_yaw = 0.0
+        self.current_depth = 0.0
+
+        # Initialize PID controllers
+        self.pid_yaw = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
+        self.pid_depth = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
         self.publisher_timer = self.create_timer(
             3.0, self.run_node #Every second, runs the run_node() method
         )
         self.get_logger().info("starting publisher node") #Log in the terminal "starting publisher node"
+    def imu_callback(self, msg):
+        # Extract yaw from quaternion
+        orientation_q = msg.orientation
+        euler = tf_transformations.euler_from_quaternion([
+            orientation_q.x,
+            orientation_q.y,
+            orientation_q.z,
+            orientation_q.w])
+        self.current_yaw = euler[2]  # Yaw is the third element
 
-    def run_node(self):
+    def pressure_to_depth(self, pressure):
+        """calculates depth in meters given presssure in Pascals"""
+        rho = 1029  # density of sea water in kg/m^3 
+        g = 9.81  # acceleration due to gravity in m/s^2
+        pressure_at_sea_level = 1013.25  # average sea level pressure in hPa
+        return (pressure - pressure_at_sea_level) * 100 / (rho * g)
+    def pressure_callback(self, msg):
+        self.current_depth = self.pressure_to_depth(msg.data)
+
+    def Move_rotate(self, desired):
+        yaw_correction = self.pid_yaw.compute(desired - self.current_yaw, 0.1)
+        movement = OverrideRCIn()
+        movement.channels = [65535] * 18
+        movement.channels[3] = int(1500 + yaw_correction)
+        self.publisher.publish(movement)
+
+    def Move_updown(self, desired):
+        depth_correction = self.pid_depth.compute(desired- self.current_depth, 0.1)
+        movement = OverrideRCIn()
+        movement.channels = [65535] * 18
+        movement.channels[2] = int(1500 + depth_correction)
+        self.publisher.publish(movement)
+
+
+    def Move_lateral(self):
+        """moves auv in given direction"""
         # Example of a neutral state setup
         movement = OverrideRCIn()
         movement.channels = [65535] * 18  # Setting all to middle value which typically means no action
@@ -115,17 +186,29 @@ class MoveNode(Node):
         self.publisher.publish(movement)
         self.get_logger().info(f"OverrideRCIn: {movement.channels}")
 
-    def move_forward(self, movement):
-        movement.channels[4] = 2000  # Forward
+    def move_forward(self, movement, speed):
+        """moves auv forward given a speed between 0 and 100"""
+        movement.channels[4] = 1500 + 5*speed  # Forward
 
-    def move_backward(self, movement):
-        movement.channels[4] = 1000  # Backward
+    def move_backward(self, movement, speed):
+        """moves auv backward given a speed between 0 and 100"""
+        movement.channels[4] = 1500 - 5*speed  # Backward
 
-    def move_up(self, movement):
-        movement.channels[2] = 2000  # Up
+    def move_left(self, movement, speed):
+        """moves auv left given a speed between 0 and 100"""
+        movement.channels[5] = 1500 - 5*speed  # Forward
+    def move_right(self, movement, speed):
+        """moves auv right given a speed between 0 and 100"""
+        movement.channels[5] = 1500 + 5*speed  # Forward
 
-    def move_down(self, movement):
-        movement.channels[2] = 1000  # Down
+
+    def move_up(self, movement, speed):
+        """moves auv up given a speed between 0 and 100"""
+        movement.channels[2] = 1500 + 5*speed  # up
+        
+    def move_down(self, movement, speed):
+        """moves auv down given a speed between 0 and 100"""
+        movement.channels[2] = 1500 - 5*speed  # down
 
     def turn_cw(self, movement):
         movement.channels[3] = 2000  # Turn clockwise
@@ -133,11 +216,6 @@ class MoveNode(Node):
     def turn_ccw(self, movement):
         movement.channels[3] = 1000  # Turn counterclockwise
 
-    def strafe_right(self, movement):
-        movement.channels[5] = 2000  # Strafe right
-
-    def strafe_left(self, movement):
-        movement.channels[5] = 1000  # Strafe left
 
 def main(args=None):
     rclpy.init(args=args)           # starts the ROS2 Python3 client
