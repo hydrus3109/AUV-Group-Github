@@ -20,6 +20,13 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            # 'publisher = intro_to_ros.publisher:main',
+            'subscriber = intro_to_ros.subscriber:main',
+            #'subscriber = intro_to_ros.bluerov2_sensors:main',
+            'drivepub = intro_to_ros.rovdrive:main',
+            'arm = intro_to_ros.arm:main',
+            'disarm = intro_to_ros.disarm:main',
+            'gpt = intro_to_ros.gpt:main'
         ],
     },
 )
