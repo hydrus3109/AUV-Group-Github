@@ -1,6 +1,2 @@
 [console_scripts]
-arm = intro_to_ros.arm:main
-disarm = intro_to_ros.disarm:main
-drivepub = intro_to_ros.rovdrive:main
-gpt = intro_to_ros.gpt:main
 subscriber = intro_to_ros.subscriber:main

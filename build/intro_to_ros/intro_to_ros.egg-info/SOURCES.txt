@@ -2,13 +2,8 @@ package.xml
 setup.cfg
 setup.py
 intro_to_ros/__init__.py
-intro_to_ros/arm.py
-intro_to_ros/disarm.py
-intro_to_ros/gpt.py
-intro_to_ros/move.py
 intro_to_ros/physics_sim.py
 intro_to_ros/publisher.py
-intro_to_ros/rovdrive.py
 intro_to_ros/subscriber.py
 intro_to_ros.egg-info/PKG-INFO
 intro_to_ros.egg-info/SOURCES.txt

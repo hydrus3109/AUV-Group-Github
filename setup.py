@@ -26,7 +26,7 @@ setup(
             'drivepub = intro_to_ros.rovdrive:main',
             'arm = intro_to_ros.arm:main',
             'disarm = intro_to_ros.disarm:main',
-            'mode = intro_to_ros.mode:main'
+            'gpt = intro_to_ros.gpt:main'
         ],
     },
 )
