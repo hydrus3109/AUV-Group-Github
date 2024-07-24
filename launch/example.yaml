@@ -4,7 +4,7 @@ launch:
     pkg: "rosmav"
     exec: "ros_bluerov2_interface"
     name: "bluerov2_interface"
-    namespace: "bluerov2"
+    namespace: ""
 
 - node:
     pkg: "intro_to_ros"

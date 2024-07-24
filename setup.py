@@ -33,7 +33,7 @@ setup(
                             'armdisarm = intro_to_ros.armdisarm:main',
                             'dance = intro_to_ros.dance:main',
                             'pressure = intro_to_ros.pressure:main',
-                            'bluerov2_interface = rosmav.ros_bluerov2_interface:main'
+                            "ros_bluerov2_interface = rosmav.ros_bluerov2_interface:main",
         ],
     },
 )
