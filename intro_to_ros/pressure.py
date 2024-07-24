@@ -39,11 +39,13 @@ class SensorSubscriber(Node):
         self.get_logger().info("starting subscriber node")
         
     def temperature_callback(self, msg):
+        '''returns the temperature to the terminal'''
         self.temperature = msg.temperature
         self.get_logger().info(f"Temperature: {self.temperature}")
         
         
     def pressure_callback(self, msg):
+        '''subscribes to pressure, converts it to depth, and publishes depth in meters'''
         self.depth_real = Altitude()
         self.depth_real.relative = self.depth(msg.fluid_pressure)
         self.depth_publisher.publish(self.depth_real)
@@ -51,8 +53,7 @@ class SensorSubscriber(Node):
         self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.relative}")
         
     def depth(self, pressure):
-        """Converts from pressure in Pa to Depth
-        """
+        """Converts from pressure in Pa to Depth in meters"""
         return (pressure-ONEATM_TO_PASCAL)/GRAVITATION_CONST/FLUID_DENSITY
         
 def main(args=None):
