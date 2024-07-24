@@ -39,8 +39,8 @@ class SensorSubscriber(Node):
         
     def pressure_callback(self, msg):
         self.pressure = msg.fluid_pressure
-        self.depth = self.depth(self.pressure)
-        self.get_logger().info(f"Pressure: {self.pressure}, Depth: {self.depth}")
+        self.depth_real = self.depth(self.pressure)
+        self.get_logger().info(f"Pressure: {self.pressure}, Depth: {self.depth_real}")
         
     def depth(self, pressure):
         """Converts from pressure in Pa to Depth
