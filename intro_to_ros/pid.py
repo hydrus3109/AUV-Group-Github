@@ -19,6 +19,7 @@ from mavros_msgs.srv import CommandBool
 from mavros_msgs.msg import OverrideRCIn
 from time import sleep
 import math
+from mavros_msgs.msg import Altitude
 from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDurabilityPolicy
 
 
@@ -49,7 +50,7 @@ class PIDController:
         return output
 
 
-class MoveNode(Node):
+class PIDNode(Node):
     def __init__(self):
         super().__init__("move_node") #Node name
         
@@ -58,27 +59,22 @@ class MoveNode(Node):
             "bluerov2/override_rc", #Topic name
             10
         )
+        self.depth_subscriber = self.create_subscription(
+            Altitude, 
+            "bluerov2/depth",
+            self.depth_callback,
+            10
+        )
         
         self.movement = OverrideRCIn()
         self.movement.channels = [65535] * 18                                #Initialize the movement channel Type (OverrideRCIn)
-        self.move_publisher.publish(self.movement)
-        self.get_logger().info("Starting publisher node for movement") #Log in the terminal "starting publisher node"
         self.get_logger().info("starting publisher node")
         self.pid_yaw = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
         self.pid_depth = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
-    def imu_callback(self, msg):
-        # Extract yaw from quaternion
-        orientation_q = msg.orientation
-        self.current_yaw = orientation_q.w # Yaw is the third element
+    def temperature_callback(self, msg):
+        self.depth = msg.relative
+        self.get_logger().info(f"Depth: {self.depth}")
 
-    def pressure_to_depth(self, pressure):
-        """calculates depth in meters given presssure in Pascals"""
-        rho = 1029  # density of sea water in kg/m^3 
-        g = 9.81  # acceleration due to gravity in m/s^2
-        pressure_at_sea_level = 1013.25  # average sea level pressure in hPa
-        return (pressure - pressure_at_sea_level) * 100 / (rho * g)
-    def pressure_callback(self, msg):
-        self.current_depth = self.pressure_to_depth(msg.data)
     def stop(self, time):
         self.movement.channels = [1500] * 18
         self.move_publisher.publish(self.movement)
@@ -93,147 +89,14 @@ class MoveNode(Node):
     
     
     def Move_updown(self, desired):
-        depth_correction = self.pid_depth.compute(desired- self.current_depth, 0.1)
+        depth_correction = self.pid_depth.compute(desired- self.depth, 0.1)
         movement = OverrideRCIn()
         movement.channels = [65535] * 18
         movement.channels[2] = int(1500 + depth_correction)
         self.publisher.publish(movement)
     
         #self.test()
-    def test(self):
-        movement = OverrideRCIn()
-        movement.channels = [65535] * 18
-        self.move_forward(movement, 30, 5)
-        
-        
-    def reset(self, movement):
-        """completely stops auv and resets movement"""
-        movement.channels = [65535] * 18
-        self.move_publisher.publish(movement)
-        
-    def move_forward(self, movement, speed, time):
-        """moves auv forward given a speed between 0 and 30%, for a time in seconds"""
-        for i in range(math.floor(time*10)):
-            movement.channels[4] = 1500 + 5*speed  # Forward
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[4] = 1500
-
-    def move_backward(self, movement, speed, time):
-        """moves auv backward given a speed between 0 and 30%, for a time in seconds"""
-        for i in range(math.floor(time*10)):
-            movement.channels[4] = 1500 - 5*speed  # Backward
-            self.move_publisher.publish(movement)
-            sleep(0.1)
-        movement.channels[4] = 1500
-
-    def move_left(self, movement, speed, time):
-        """moves auv left given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 1500 - 5*speed  # Forward
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-    def move_right(self, movement, speed, time):
-        """moves auv right given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 1500 + 5*speed  # Forward
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-
-
-    def move_up(self, movement, speed, time):
-        """moves auv up given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[2] = 1500 + 5*speed  # up
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[2] = 1500
-        
-    def move_down(self, movement, speed, time):
-        """moves auv down given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[2] = 1500 - 5*speed  # down
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[2] = 1500
-
-    def turn_cw(self, movement, speed, time):
-        """moves auv clockwise given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[3] = 1500 + 5*speed  # Turn clockwise
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[3] = 1500
-
-    def turn_ccw(self, movement, speed, time):
-        """moves auv counterclockwise given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[3] = 1500 - 5*speed # Turn counterclockwise
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[3] = 1500
-
-    def turn_on_lights(self, movement):
-        """turns on auv lights"""
-        movement.channels[8] = 2000
-        movement.channels[9] = 2000    
-        self.move_publisher.publish(movement)
-
-    def turn_off_lights(self, movement):
-        """turns off auv lights"""
-        movement.channels[8] = 1000
-        movement.channels[9] = 1000
-        self.move_publisher.publish(movement)
     
-    def lean_right(self, movement, speed, time):
-        """leans auv to right given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[1] = 1500 + 5*speed # Turn counterclockwise
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[1] = 1500
-
-    def lean_left(self, movement, speed, time):
-        """leans auv to left given a speed between 0 and 30%, for a time in seconds"""
-        for i in range (math.floor(time*10)):
-            movement.channels[1] = 1500 - 5*speed # Turn counterclockwise
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[1] = 1500
-    def orbit_left(self, movement, time):
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 1000 
-            movement.channels[3] = 1750
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-        movement.channels[3] = 1500
-    def orbit_right(self, movement, time):
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 2000  
-            movement.channels[3] = 1250
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-        movement.channels[3] = 1500
-    def wonky_right(self, movement, time):
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 2000  
-            movement.channels[3] = 1700
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-        movement.channels[3] = 1500
-    def wonky_left(self, movement, time):
-        for i in range (math.floor(time*10)):
-            movement.channels[5] = 1000  
-            movement.channels[3] = 1200
-            self.move_publisher.publish(movement)
-            sleep(.1)
-        movement.channels[5] = 1500
-        movement.channels[3] = 1500
         
     def destroy_node(self):
         return super().destroy_node()
@@ -241,7 +104,7 @@ class MoveNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)           # starts the ROS2 Python3 client
-    move_node = MoveNode()    
+    move_node = PIDNode()    
     try:            #Initializes moveNode
         rclpy.spin(move_node)            # keeps node running until there is an exception
     except KeyboardInterrupt:
