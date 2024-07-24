@@ -15,14 +15,13 @@ ONEATM_TO_PASCAL = 101325
 class PressureConverter(Node):
     def __init__(self):
         super().__init__("pressure_subscriber")
+        super().__init__("pressure_subscriber")
         self.pressure_subscriber = self.create_subscription(
             Pressure,
             "bluerov2/pressure",
             self.pressure_callback,
             10
-        )
-        
-        
+        )       
         self.depth_publisher = self.create_publisher(
             Altitude,
             "bluerov2/depth",
