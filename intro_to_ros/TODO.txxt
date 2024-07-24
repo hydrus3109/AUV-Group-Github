@@ -1,0 +1,4 @@
+1. put pid class into node class
+2. add timestamp callback
+3. add pid to subscriber callback
+4. change dt to match timestamp 
