@@ -38,6 +38,8 @@ class MoveNode(Node):
         
     def stop(self, time):
         self.movement.channels = [1500] * 18
+        self.movement.channels[8] = 1000
+        self.movement.channels[9] = 1000
         self.move_publisher.publish(self.movement)
         sleep(time)
     
@@ -45,7 +47,7 @@ class MoveNode(Node):
     def test(self):
         movement = OverrideRCIn()
         movement.channels = [65535] * 18
-        self.move_forward(movement, 30, 5)
+        self.turn_on_lights(movement)
         
     def chachaslide(self):
         """
@@ -55,7 +57,8 @@ class MoveNode(Node):
         
         movement.channels = [65535] * 18
         self.turn_off_lights(movement)
-        sleep(8.5)
+        self.move_forward(movement,40,4)
+        sleep(4.5)
         #funky forp 4 sec (ccw)
         #funky for 2.2 sec (cw)
         #wait for 1.2 sec
@@ -131,21 +134,21 @@ class MoveNode(Node):
         self.turn_on_lights(movement)
         time.sleep(.2)
         self.turn_off_lights(movement)
-        time.sleep(4.5)
+        time.sleep(3)
         #left 
-        self.move_left(movement, 75, 1)
+        self.move_left(movement, 75, 1.5)
         #take it back
         self.move_right(movement, 75, 1)
         time.sleep(.4)
         #hop
-        self.move_up(movement, 100, 1)
-        self.move_down(movement,30,.75)
+        self.move_down(movement, 50, .75)
+        self.move_up(movement,100,.75)
         time.sleep(.4)
         #right foot stomp
-        self.lean_right(movement, 30, 1)
+        self.lean_right(movement, 100, 1)
         time.sleep(1)
         #left foot stomp
-        self.lean_left(movement, 30, 1)
+        self.lean_left(movement, 100, 1)
         time.sleep(1)
         #cha cha
         self.orbit_left(movement, 3.5)
@@ -156,8 +159,9 @@ class MoveNode(Node):
         #take it back
         self.move_backward(movement, 75, 1)
         #hop
-        self.move_up(movement, 100, 1)
-        self.move_down(movement,30,.5)
+        self.move_down(movement, 50, .75)
+        self.move_up(movement,100,.75)
+        self.stop()
         time.sleep(1.4)  
         #right foot stomp
         self.lean_right(movement, 30, .7)
@@ -176,11 +180,11 @@ class MoveNode(Node):
         #backward
         self.move_backward(movement, 75, 1)
         #two hops
-        self.move_up(movement, 100, .75)
-        self.move_down(movement, 30, .25) 
+        self.move_down(movement, 50, .75)
+        self.move_up(movement,100,.75)
         time.sleep(1) 
-        self.move_up(movement, 100, 1)
-        self.move_down(movement,30,.3)
+        self.move_down(movement, 50, .75)
+        self.move_up(movement,100,.75)
         '''  
         #right foot two stomps
         self.lean_right(movement, 30, 1)
@@ -353,6 +357,7 @@ def main(args=None):
     try:
         #MOVE THE ROBOT
         print("NOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW")
+        #ove_node.test()
         move_node.chachaslide()
         rclpy.spin(move_node)            # keeps node running until there is an exception
     except KeyboardInterrupt:

@@ -25,7 +25,8 @@ setup(
                             'bluerov2_sensors = intro_to_ros.bluerov2_sensors:main',
                             'physics = intro_to_ros.physics_sim:main',
                             'armdisarm = intro_to_ros.armdisarm:main',
-                            'dance = intro_to_ros.dance:main'
+                            'dance = intro_to_ros.dance:main',
+                            'pressure = intro_to_ros.pressure:main'
         ],
     },
 )

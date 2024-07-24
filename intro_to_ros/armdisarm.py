@@ -75,6 +75,7 @@ def main(args=None):
         pass
     finally:
         armingNode.destroy_node()
+        
         rclpy.shutdown()
 
 
