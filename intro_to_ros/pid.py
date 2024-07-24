@@ -1,26 +1,7 @@
-#!/usr/bin/env python3
-
-#~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUR_COMPUTER_IP:14550
-#ros2 launch mavros apm.launch fcu_url:=udp://192.168.2.2:14550@14555 gcs_url:=udp://:14550@YOUR_COMPUTER_IP:14550 tgt_system:=1 tgt_component:=1 system_id:=1 component_id:=240
-
-#cd ~/auvc_ws
-#colcon build --packages-select intro_to_ros --symlink-install
-#source ~/auvc_ws/install/setup.zsh
-
-#ros2 topic list
-#ros2 topic type /your/topic
-#ro2 topic echo /your/topic :)))))
-#ros2  interface show your_msg_library/msg/YourMessageType
-
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
-from mavros_msgs.srv import CommandBool
-from mavros_msgs.msg import OverrideRCIn
-from time import sleep
-import math
-from mavros_msgs.msg import Altitude
-from rclpy.qos import QoSProfile, QoSHistoryPolicy, QoSReliabilityPolicy, QoSDurabilityPolicy
+from mavros_msgs.msg import ManualControl, Altitude
 
 
 class PIDController:
@@ -33,6 +14,7 @@ class PIDController:
         self.max_output = max_output
         self.integral = 0.0
         self.previous_error = 0.0
+        self.error_accumulator = 0.0
 
     def reset(self):
         self.integral = 0.0
@@ -40,11 +22,13 @@ class PIDController:
 
     def compute(self, error, dt):
         self.integral += error * dt
-        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)  # Anti-windup
+        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
 
         derivative = (error - self.previous_error) / dt
-        output = (self.kp * error) + (self.ki * self.integral) + (self.kd * derivative)
-        output = max(min(output, self.max_output), self.min_output)  # Clamp to max/min output
+
+        proportional = self.kp * error
+        output = proportional + (self.ki * self.integral) + (self.kd * derivative)
+        output = max(min(output, self.max_output), self.min_output)
 
         self.previous_error = error
         return output
@@ -52,67 +36,69 @@ class PIDController:
 
 class PIDNode(Node):
     def __init__(self):
-        super().__init__("move_node") #Node name
-        
-        self.move_publisher = self.create_publisher(                    #Initialize the publisher
-            OverrideRCIn, #Type of message that's boreadcasted
-            "bluerov2/override_rc", #Topic name
+        super().__init__('move_node')
+
+        self.move_publisher = self.create_publisher(
+            ManualControl,
+            'bluerov2/manual_control',
             10
         )
         self.depth_subscriber = self.create_subscription(
-            Altitude, 
-            "bluerov2/depth",
+            Altitude,
+            'bluerov2/depth',
             self.depth_callback,
             10
         )
-        
-        self.movement = OverrideRCIn()
-        self.movement.channels = [65535] * 18                                #Initialize the movement channel Type (OverrideRCIn)
-        self.get_logger().info("starting publisher node")
-        self.pid_yaw = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
-        self.pid_depth = PIDController(0.5, 0.1, 0.05, 5.0, -100, 100)
-    def temperature_callback(self, msg):
+
+        self.desired_depth_subscriber = self.create_subscription(
+            Altitude,
+            'bluerov2/desired_depth',
+            self.desired_depth_callback,
+            10
+        )
+
+        self.get_logger().info('starting publisher node')
+        #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
+        self.pid_depth = PIDController(30, 5, 2, 10.0, -100.0, 100.0)
+        self.depth = 0.0
+        self.desired_depth = 5.0
+        self.vert_timer = self.create_timer(0.1, self.calc_publish_vertical)
+
+    def depth_callback(self, msg):
         self.depth = msg.relative
-        self.get_logger().info(f"Depth: {self.depth}")
+        #self.get_logger().info(f'Depth: {self.depth}')
 
-    def stop(self, time):
-        self.movement.channels = [1500] * 18
-        self.move_publisher.publish(self.movement)
-        sleep(time)
-    
-    def Move_rotate(self, desired):
-        yaw_correction = self.pid_yaw.compute(desired - self.current_yaw, 0.1)
-        movement = OverrideRCIn()
-        movement.channels = [65535] * 18
-        movement.channels[3] = int(1500 + yaw_correction)
-        self.publisher.publish(movement)
-    
-    
-    def Move_updown(self, desired):
-        depth_correction = self.pid_depth.compute(desired- self.depth, 0.1)
-        movement = OverrideRCIn()
-        movement.channels = [65535] * 18
-        movement.channels[2] = int(1500 + depth_correction)
-        self.publisher.publish(movement)
-    
-        #self.test()
-    
-        
-    def destroy_node(self):
-        return super().destroy_node()
+    def desired_depth_callback(self, msg):
+        #self.desired_depth = msg.relative
+        print("hi") 
+    def calc_publish_vertical(self):
+        if self.depth is not None:
+            depth_correction = self.pid_depth.compute(self.depth - self.desired_depth, 0.1)
+            movement = ManualControl()
+            movement.z = depth_correction
+            self.get_logger().info(f'\nCurrent Speed: {depth_correction}\nDepth: {self.depth}')
+            self.move_publisher.publish(movement)
 
+    def move_vertical(self, desired):
+        self.desired_depth = desired
+        if not self.vert_timer.is_ready():
+            self.vert_timer.reset()
+
+    def stop_timer(self):
+        self.vert_timer.cancel()
+        self.get_logger().info('Timer stopped.')
 
 def main(args=None):
-    rclpy.init(args=args)           # starts the ROS2 Python3 client
-    move_node = PIDNode()    
-    try:            #Initializes moveNode
-        rclpy.spin(move_node)            # keeps node running until there is an exception
+    rclpy.init(args=args)
+    move_node = PIDNode()
+    try:
+        rclpy.spin(move_node)
     except KeyboardInterrupt:
-        print("\nKeyboardInterrupt received, shutting down...")
-    finally:      
+        print('\nKeyboardInterrupt received, shutting down...')
+    finally:
         move_node.destroy_node()
         if rclpy.ok():
-            rclpy.shutdown()        # closes the ROS2 Python3 client if it is still active
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

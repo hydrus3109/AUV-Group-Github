@@ -63,13 +63,8 @@ def main(args=None):
     armingNode = ArmingDisarmingNode()
     
     try:
-        while rclpy.ok():
-            armingNode.arm()
-            rclpy.spin_once(armingNode)
-            if armingNode.done:
-                break
-        
-        sleep(110)
+        armingNode.arm()
+        rclpy.spin(armingNode)
     except KeyboardInterrupt:
         pass
     finally:
