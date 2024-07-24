@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Vector3
+from std_msgs.msg import Float32
 from sensor_msgs.msg import (
     FluidPressure as Pressure,
     Temperature,
@@ -16,17 +16,23 @@ import numpy as np
 class SensorSubscriber(Node):
     def __init__(self):
         super().__init__("sensor_subscriber")
-        self.subscriber = self.create_subscription(
+        self.pressure_subscriber = self.create_subscription(
             Pressure,
             "bluerov2/pressure",
             self.pressure_callback,
             10
         )
         
-        self.subscriber = self.create_subscription(
+        self.temp_subscriber = self.create_subscription(
             Temperature,
             "bluerov2/temperature",
             self.temperature_callback,
+            10
+        )
+        
+        self.depth_publisher = self.create_publisher(
+            Float32,
+            "/bluerov2/depth",
             10
         )
         
@@ -38,9 +44,11 @@ class SensorSubscriber(Node):
         
         
     def pressure_callback(self, msg):
-        self.pressure = msg.fluid_pressure
-        self.depth_real = self.depth(self.pressure)
-        self.get_logger().info(f"Pressure: {self.pressure}, Depth: {self.depth_real}")
+        self.depth_real = Float32()
+        self.depth_real.data = self.depth(msg.fluid_pressure)
+        self.depth_publisher.publish(self.depth_real)
+
+        self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.data}")
         
     def depth(self, pressure):
         """Converts from pressure in Pa to Depth
