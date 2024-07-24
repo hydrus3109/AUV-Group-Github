@@ -12,10 +12,9 @@ FLUID_DENSITY = 1000
 GRAVITATION_CONST = 9.81
 ONEATM_TO_PASCAL = 101325
 
-import numpy as np
-class SensorSubscriber(Node):
+class PressureConverter(Node):
     def __init__(self):
-        super().__init__("sensor_subscriber")
+        super().__init__("pressure_subscriber")
         self.pressure_subscriber = self.create_subscription(
             Pressure,
             "bluerov2/pressure",
@@ -23,25 +22,15 @@ class SensorSubscriber(Node):
             10
         )
         
-        self.temp_subscriber = self.create_subscription(
-            Temperature,
-            "bluerov2/temperature",
-            self.temperature_callback,
-            10
-        )
         
         self.depth_publisher = self.create_publisher(
             Altitude,
-            "/bluerov2/depth",
+            "bluerov2/depth",
             10
         )
         
         self.get_logger().info("starting subscriber node")
         
-    def temperature_callback(self, msg):
-        '''returns the temperature to the terminal'''
-        self.temperature = msg.temperature
-        self.get_logger().info(f"Temperature: {self.temperature}")
         
         
     def pressure_callback(self, msg):
@@ -58,8 +47,7 @@ class SensorSubscriber(Node):
         
 def main(args=None):
     rclpy.init(args=args)
-    node = SensorSubscriber()
-
+    node = PressureConverter()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
