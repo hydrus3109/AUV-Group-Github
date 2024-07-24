@@ -36,6 +36,7 @@ class PressureConverter(Node):
         '''subscribes to pressure, converts it to depth, and publishes depth in meters'''
         self.depth_real = Altitude()
         self.depth_real.relative = self.depth(msg.fluid_pressure)
+
         self.depth_publisher.publish(self.depth_real)
 
         self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.relative}")
