@@ -14,7 +14,7 @@ setup(
     ],
     install_requires=['setuptools','rclpy','mavros_msgs', 'numpy', 'mavros'],
     zip_safe=True,
-    maintainer='aidan',
+    maintainer='aidan+andy+ken+roneet+shamak',
     maintainer_email='agao3019@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
