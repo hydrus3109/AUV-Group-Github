@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32
+from mavros_msgs.msg import Altitude
 from sensor_msgs.msg import (
     FluidPressure as Pressure,
     Temperature,
@@ -31,7 +31,7 @@ class SensorSubscriber(Node):
         )
         
         self.depth_publisher = self.create_publisher(
-            Float32,
+            Altitude,
             "/bluerov2/depth",
             10
         )
@@ -44,8 +44,8 @@ class SensorSubscriber(Node):
         
         
     def pressure_callback(self, msg):
-        self.depth_real = Float32()
-        self.depth_real.data = self.depth(msg.fluid_pressure)
+        self.depth_real = Altitude()
+        self.depth_real.data = self.relative(msg.fluid_pressure)
         self.depth_publisher.publish(self.depth_real)
 
         self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.data}")
