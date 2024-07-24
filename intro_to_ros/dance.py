@@ -47,7 +47,7 @@ class MoveNode(Node):
     def test(self):
         movement = OverrideRCIn()
         movement.channels = [65535] * 18
-        self.turn_on_lights(movement)
+        self.move_down(movement, 100, 5)
         
     def chachaslide(self):
         """
@@ -357,8 +357,8 @@ def main(args=None):
     try:
         #MOVE THE ROBOT
         print("NOWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW")
-        #ove_node.test()
-        move_node.chachaslide()
+        move_node.test()
+        #move_node.chachaslide()
         rclpy.spin(move_node)            # keeps node running until there is an exception
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt received, shutting down...")
