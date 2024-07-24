@@ -14,6 +14,6 @@ launch:
 
 - node:
     pkg: "intro_to_ros"
-    exec: "dance"
-    name: "move"
+    exec: "pressure"
+    name: "pressure"
     namespace: ""

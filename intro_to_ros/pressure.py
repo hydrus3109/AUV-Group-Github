@@ -45,10 +45,10 @@ class SensorSubscriber(Node):
         
     def pressure_callback(self, msg):
         self.depth_real = Altitude()
-        self.depth_real.data = self.relative(msg.fluid_pressure)
+        self.depth_real.relative = self.depth(msg.fluid_pressure)
         self.depth_publisher.publish(self.depth_real)
 
-        self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.data}")
+        self.get_logger().info(f"Pressure: {msg.fluid_pressure}, Depth: {self.depth_real.relative}")
         
     def depth(self, pressure):
         """Converts from pressure in Pa to Depth
