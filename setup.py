@@ -14,7 +14,7 @@ setup(
     ],
     install_requires=['setuptools','rclpy','mavros_msgs', 'numpy', 'mavros'],
     zip_safe=True,
-    maintainer='aidan',
+    maintainer='aidan+andy+ken+roneet+shamak',
     maintainer_email='agao3019@gmail.com',
     description='TODO: Package description',
     license='TODO: License declaration',
@@ -22,10 +22,10 @@ setup(
     entry_points={
         'console_scripts': ['publisher = intro_to_ros.publisher:main',
                             'subscriber = intro_to_ros.subscriber:main',
-                            'subscriber2 = intro_to_ros.bluerov2_sensors:main',
-                            'physicssubscriber = intro_to_ros.physics_sim:main',
-                            'drivepub = intro_to_ros.rovdrive:main',
-                            'armdisarm = intro_to_ros.armdisarm:main'
+                            'bluerov2_sensors = intro_to_ros.bluerov2_sensors:main',
+                            'physics = intro_to_ros.physics_sim:main',
+                            'armdisarm = intro_to_ros.armdisarm:main',
+                            'dance = intro_to_ros.dance:main'
         ],
     },
 )

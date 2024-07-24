@@ -70,7 +70,7 @@ def main(args=None):
             if armingNode.done:
                 break
         
-        sleep(120)
+        sleep(110)
     except KeyboardInterrupt:
         pass
     finally:
