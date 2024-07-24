@@ -59,9 +59,9 @@ class PIDNode(Node):
 
         self.get_logger().info('starting publisher node')
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
-        self.pid_depth = PIDController(30, 5, 2, 10.0, -100.0, 100.0)
+        self.pid_depth = PIDController(40, 5, 2, 10.0, -100.0, 100.0)
         self.depth = 0.0
-        self.desired_depth = 5.0
+        self.desired_depth = 0.0
         self.vert_timer = self.create_timer(0.1, self.calc_publish_vertical)
 
     def depth_callback(self, msg):
@@ -69,8 +69,8 @@ class PIDNode(Node):
         #self.get_logger().info(f'Depth: {self.depth}')
 
     def desired_depth_callback(self, msg):
-        #self.desired_depth = msg.relative
-        print("hi") 
+        self.desired_depth = msg.relative
+        
     def calc_publish_vertical(self):
         if self.depth is not None:
             depth_correction = self.pid_depth.compute(self.depth - self.desired_depth, 0.1)
