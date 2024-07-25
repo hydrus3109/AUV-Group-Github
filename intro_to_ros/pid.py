@@ -1,23 +1,25 @@
 #!/usr/bin/env python3
 
 #~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUR_COMPUTER_IP:14550
-#ros2 launch mavros apm.launch fcu_url:=udp://192.168.2.2:14550@14555 gcs_url:=udp://:14550@YOUR_COMPUTER_IP:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/example.yaml
 
 #cd ~/auvc_ws
-#colcon build --packages-select intro_to_ros --symlink-install
+#colcon build --symlink-install
 #source ~/auvc_ws/install/setup.zsh
 
 #ros2 topic list
 #ros2 topic type /your/topic
 #ro2 topic echo /your/topic :)))))
 #ros2  interface show your_msg_library/msg/YourMessageType
+#ros2 topic pub bluerov2/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
+
 import rclpy
 from rclpy.node import Node
+from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
 import numpy as np
-import time
 
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 class PIDNode(Node):
@@ -58,15 +60,18 @@ class PIDNode(Node):
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
         self.depth = float()
         self.desired_depth = None
-        self.prev_time = time.time()
+        self.prev_time = 0
+        
+        self.array = np.array([])
 
 
     def reset(self):
         self.integral = 0.0
         self.previous_error = 0.0
-        self.prev_time = time.time()
 
     def compute(self, error, dt):
+        self.array = np.append(self.array, [error])
+        
         self.integral += error*dt
         self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
 
@@ -86,7 +91,7 @@ class PIDNode(Node):
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         if self.desired_depth != None:
             self.calc_publish_vertical()
-        self.prev_time = self.timestamp
+        self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
@@ -97,10 +102,9 @@ class PIDNode(Node):
         if self.depth is not None:
             depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
             movement = ManualControl()
-            movement.z = 50.0 +depth_correction
+            movement.z = 50.0 + depth_correction
             self.get_logger().info(f'\nCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
             self.move_publisher.publish(movement)
-
 
 
 def main(args=None):
@@ -111,9 +115,11 @@ def main(args=None):
     except KeyboardInterrupt:
         print('\nKeyboardInterrupt received, shutting down...')
     finally:
-        #print(move_node.array)
-       #plt.plot(x, move_node.array)
-       #plt.savefig("plot.png")
+        x = np.arange(0,len(move_node.array))
+
+        plt.plot(x,move_node.array)
+        plt.savefig("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/plot.png")
+        
         move_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
