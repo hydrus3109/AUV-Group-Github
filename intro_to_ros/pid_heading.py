@@ -17,12 +17,14 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
+from std_msgs.msg import Float64
 import numpy as np
+import math
 
 import matplotlib.pyplot as plt
 
 
-class PIDheadingNode(Node):
+class PIDHeadingNode(Node):
     def __init__(self):
         super().__init__('heading_node')
 
@@ -32,16 +34,22 @@ class PIDheadingNode(Node):
             10
         )
         self.heading_subscriber = self.create_subscription(
-            Altitude,
+            Float64,
             'bluerov2/heading',
             self.heading_callback,
             10
         )
 
         self.desired_heading_subscriber = self.create_subscription(
-            Altitude,
+            Float64,
             'bluerov2/desired_heading',
             self.desired_heading_callback,
+            10
+        )
+        self.heading_derivative_subscriber = self.cre_subscription(
+            Float64,
+            'bluerov2/angular_speed',
+            self.heading_derivative_callback,
             10
         )
         """
@@ -51,8 +59,8 @@ class PIDheadingNode(Node):
         self.ki = 7
         self.kd = 15
         self.max_integral = 4.0
-        self.min_output = -50.0
-        self.max_output = 50.0
+        self.min_output = -20.0
+        self.max_output = 20.0
         self.integral = 0.0
         self.previous_error = 0.0
         """"""
@@ -60,6 +68,7 @@ class PIDheadingNode(Node):
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
         self.heading = float()
         self.desired_heading = None
+        self.heading_derivative = None
         self.prev_time = None
         
         self.array = np.array([])
@@ -70,17 +79,17 @@ class PIDheadingNode(Node):
         self.previous_error = 0.0
         self.prev_time = None()
 
-    def compute(self, error, dt):
+    def compute(self, error):
         self.array = np.append(self.array, [error])
         
         self.integral += error*dt
         self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
 
-        derivative = (error - self.previous_error) / dt
+        self.derivative = self.heading_derivative
 
-        proportional = self.kp * error
-        output = proportional + (self.ki * self.integral) + (self.kd * derivative)
-        self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *derivative}')
+        proportional = self.kp / 1.8 * error
+        output = proportional + (self.ki * self.integral / 1.8) + (self.kd * self.derivative / 1.8)
+        self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *self.derivative}')
         
         output = max(min(output, self.max_output), self.min_output)
 
@@ -99,10 +108,12 @@ class PIDheadingNode(Node):
     def desired_heading_callback(self, msg):
         self.desired_heading = msg.relative
         
+    def heading_derivative_callback(self, msg):
+        self.heading_derivative = msg.relative
     def calc_publish_heading(self):
         if self.heading is not None and self.timestamp - self.prev_time > 0:
-            error = (self.desired_heading- self.current_heading + 180) % 360 - 180
-            heading_correction = self.compute(error, self.timestamp - self.prev_time)
+            error = max(((self.desired_heading - self.current_heading + 180) % 360 - 180), 50)
+            heading_correction = self.compute(error)
             movement = ManualControl()
             movement.r = heading_correction
             self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
@@ -111,7 +122,7 @@ class PIDheadingNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    move_node = PIDheadingNode()
+    move_node = PIDHeadingNode()
     try:
         rclpy.spin(move_node)
     except KeyboardInterrupt:
