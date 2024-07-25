@@ -22,9 +22,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class PIDNode(Node):
+class PIDdepthNode(Node):
     def __init__(self):
-        super().__init__('move_node')
+        super().__init__('depth_node')
 
         self.move_publisher = self.create_publisher(
             ManualControl,
@@ -104,7 +104,7 @@ class PIDNode(Node):
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         if self.prev_time != None and self.desired_depth != None:
             self.calc_publish_vertical()
-        self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        self.prev_time = self.timestamp
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
@@ -122,7 +122,7 @@ class PIDNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    move_node = PIDNode()
+    move_node = PIDdepthNode()
     try:
         rclpy.spin(move_node)
     except KeyboardInterrupt:

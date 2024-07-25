@@ -22,26 +22,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class PIDNode(Node):
+class PIDheadingNode(Node):
     def __init__(self):
-        super().__init__('move_node')
+        super().__init__('heading_node')
 
         self.move_publisher = self.create_publisher(
             ManualControl,
             'bluerov2/manual_control',
             10
         )
-        self.depth_subscriber = self.create_subscription(
+        self.heading_subscriber = self.create_subscription(
             Altitude,
-            'bluerov2/depth',
-            self.depth_callback,
+            'bluerov2/heading',
+            self.heading_callback,
             10
         )
 
-        self.desired_depth_subscriber = self.create_subscription(
+        self.desired_heading_subscriber = self.create_subscription(
             Altitude,
-            'bluerov2/desired_depth',
-            self.desired_depth_callback,
+            'bluerov2/desired_heading',
+            self.desired_heading_callback,
             10
         )
         """
@@ -58,8 +58,8 @@ class PIDNode(Node):
         """"""
         self.get_logger().info('starting publisher node')
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
-        self.depth = float()
-        self.desired_depth = None
+        self.heading = float()
+        self.desired_heading = None
         self.prev_time = None
         
         self.array = np.array([])
@@ -87,30 +87,33 @@ class PIDNode(Node):
         self.previous_error = error
         return output
 
-    def depth_callback(self, msg):
-        self.depth = msg.relative
+    def heading_callback(self, msg):
+        self.heading = msg.relative
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
-        if self.prev_time != None and self.desired_depth != None:
-            self.calc_publish_vertical()
-        self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        if self.prev_time != None and self.desired_heading != None:
+            self.calc_publish_heading()
+        self.prev_time = self.timestamp
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
-    def desired_depth_callback(self, msg):
-        self.desired_depth = msg.relative
+    def desired_heading_callback(self, msg):
+        self.desired_heading = msg.relative
         
-    def calc_publish_vertical(self):
-        if self.depth is not None:
-            depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
+    def calc_publish_heading(self):
+        if self.heading is not None and self.timestamp - self.prev_time > 0:
+            error = (self.desired_heading - self.heading) % 360
+            if abs(error) > 180:
+                error = 360 - error
+            heading_correction = self.compute(error, self.timestamp - self.prev_time)
             movement = ManualControl()
-            movement.z = 50.0 + depth_correction
-            self.get_logger().info(f'\nCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
+            movement.r = heading_correction
+            self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
             self.move_publisher.publish(movement)
 
 
 def main(args=None):
     rclpy.init(args=args)
-    move_node = PIDNode()
+    move_node = PIDheadingNode()
     try:
         rclpy.spin(move_node)
     except KeyboardInterrupt:
