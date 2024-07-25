@@ -124,7 +124,6 @@ def main(args=None):
         move_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
-
 if __name__ == '__main__':
     main()
 
