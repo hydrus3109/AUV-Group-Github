@@ -101,9 +101,7 @@ class PIDheadingNode(Node):
         
     def calc_publish_heading(self):
         if self.heading is not None and self.timestamp - self.prev_time > 0:
-            error = (self.desired_heading - self.heading) % 360
-            if abs(error) > 180:
-                error = 360 - error
+            error = (self.desired_heading- self.current_heading + 180) % 360 - 180
             heading_correction = self.compute(error, self.timestamp - self.prev_time)
             movement = ManualControl()
             movement.r = heading_correction
