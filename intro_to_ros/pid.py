@@ -60,7 +60,7 @@ class PIDNode(Node):
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
         self.depth = float()
         self.desired_depth = None
-        self.prev_time = 0
+        self.prev_time = None
         
         self.array = np.array([])
 
@@ -68,6 +68,7 @@ class PIDNode(Node):
     def reset(self):
         self.integral = 0.0
         self.previous_error = 0.0
+        self.prev_time = None()
 
     def compute(self, error, dt):
         self.array = np.append(self.array, [error])
@@ -89,7 +90,7 @@ class PIDNode(Node):
     def depth_callback(self, msg):
         self.depth = msg.relative
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
-        if self.desired_depth != None:
+        if self.prev_time != None and self.desired_depth != None:
             self.calc_publish_vertical()
         self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
