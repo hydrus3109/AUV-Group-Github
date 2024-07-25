@@ -47,7 +47,7 @@ class MoveNode(Node):
     def test(self):
         movement = OverrideRCIn()
         movement.channels = [65535] * 18
-        self.move_down(movement, 100, 5)
+        self.move_forward(movement, 30, 5)
         
     def chachaslide(self):
         """

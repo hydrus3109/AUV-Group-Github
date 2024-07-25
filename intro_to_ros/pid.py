@@ -17,6 +17,8 @@ from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
 import numpy as np
 
+import matplotlib as plt
+
 
 class PIDNode(Node):
     def __init__(self):
@@ -43,12 +45,12 @@ class PIDNode(Node):
         """
         PID CONSTANTS
         """
-        self.kp = 15
-        self.ki = 2
-        self.kd = 5
-        self.max_integral = 10.0
-        self.min_output = -100.0
-        self.max_output = 100.0
+        self.kp = 55
+        self.ki = 7
+        self.kd = 15
+        self.max_integral = 4.0
+        self.min_output = -50.0
+        self.max_output = 50.0
         self.integral = 0.0
         self.previous_error = 0.0
         """"""
@@ -57,6 +59,7 @@ class PIDNode(Node):
         self.depth = float()
         self.desired_depth = None
         self.prev_time = 0
+
 
     def reset(self):
         self.integral = 0.0
@@ -70,6 +73,8 @@ class PIDNode(Node):
 
         proportional = self.kp * error
         output = proportional + (self.ki * self.integral) + (self.kd * derivative)
+        self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *derivative}')
+        
         output = max(min(output, self.max_output), self.min_output)
 
         self.previous_error = error
@@ -91,9 +96,11 @@ class PIDNode(Node):
         if self.depth is not None:
             depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
             movement = ManualControl()
-            movement.z = depth_correction
+            movement.z = 50.0 +depth_correction
             self.get_logger().info(f'\nCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
             self.move_publisher.publish(movement)
+
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -103,9 +110,23 @@ def main(args=None):
     except KeyboardInterrupt:
         print('\nKeyboardInterrupt received, shutting down...')
     finally:
+        #print(move_node.array)
+       #plt.plot(x, move_node.array)
+       #plt.savefig("plot.png")
         move_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
+
+
+
+
+"""
+- node:
+    pkg: "intro_to_ros"
+    exec: "pid"
+    name: "pid"
+    namespace: ""
+"""
