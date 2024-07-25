@@ -86,7 +86,7 @@ class PIDNode(Node):
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         if self.desired_depth != None:
             self.calc_publish_vertical()
-        self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        self.prev_time = self.timestamp
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
@@ -114,7 +114,6 @@ def main(args=None):
         #print(move_node.array)
        #plt.plot(x, move_node.array)
        #plt.savefig("plot.png")
-        print("hiiiiii")
         move_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
