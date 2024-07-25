@@ -18,3 +18,9 @@ launch:
     name: "pressure"
     namespace: ""
 
+- node:
+    pkg: "intro_to_ros"
+    exec: "pid"
+    name: "pid"
+    namespace: ""
+

@@ -1,37 +1,21 @@
+#!/usr/bin/env python3
+
+#~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUR_COMPUTER_IP:14550
+#ros2 launch mavros apm.launch fcu_url:=udp://192.168.2.2:14550@14555 gcs_url:=udp://:14550@YOUR_COMPUTER_IP:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
+
+#cd ~/auvc_ws
+#colcon build --packages-select intro_to_ros --symlink-install
+#source ~/auvc_ws/install/setup.zsh
+
+#ros2 topic list
+#ros2 topic type /your/topic
+#ro2 topic echo /your/topic :)))))
+#ros2  interface show your_msg_library/msg/YourMessageType
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
-
-
-class PIDController:
-    def __init__(self, kp, ki, kd, max_integral, min_output, max_output):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.max_integral = max_integral
-        self.min_output = min_output
-        self.max_output = max_output
-        self.integral = 0.0
-        self.previous_error = 0.0
-        self.error_accumulator = 0.0
-
-    def reset(self):
-        self.integral = 0.0
-        self.previous_error = 0.0
-
-    def compute(self, error, dt):
-        self.integral += error * dt
-        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
-
-        derivative = (error - self.previous_error) / dt
-
-        proportional = self.kp * error
-        output = proportional + (self.ki * self.integral) + (self.kd * derivative)
-        output = max(min(output, self.max_output), self.min_output)
-
-        self.previous_error = error
-        return output
+import numpy as np
 
 
 class PIDNode(Node):
@@ -56,37 +40,60 @@ class PIDNode(Node):
             self.desired_depth_callback,
             10
         )
-
+        """
+        PID CONSTANTS
+        """
+        self.kp = 15
+        self.ki = 2
+        self.kd = 5
+        self.max_integral = 10.0
+        self.min_output = -100.0
+        self.max_output = 100.0
+        self.integral = 0.0
+        self.previous_error = 0.0
+        """"""
         self.get_logger().info('starting publisher node')
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
-        self.pid_depth = PIDController(40, 5, 2, 10.0, -100.0, 100.0)
-        self.depth = 0.0
-        self.desired_depth = 0.0
-        self.vert_timer = self.create_timer(0.1, self.calc_publish_vertical)
+        self.depth = float()
+        self.desired_depth = None
+        self.prev_time = 0
+
+    def reset(self):
+        self.integral = 0.0
+        self.previous_error = 0.0
+
+    def compute(self, error, dt):
+        self.integral += error*dt
+        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
+
+        derivative = (error - self.previous_error) / dt
+
+        proportional = self.kp * error
+        output = proportional + (self.ki * self.integral) + (self.kd * derivative)
+        output = max(min(output, self.max_output), self.min_output)
+
+        self.previous_error = error
+        return output
 
     def depth_callback(self, msg):
         self.depth = msg.relative
-        #self.get_logger().info(f'Depth: {self.depth}')
+        self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        if self.desired_depth != None:
+            self.calc_publish_vertical()
+        self.prev_time = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
+
 
     def desired_depth_callback(self, msg):
         self.desired_depth = msg.relative
         
     def calc_publish_vertical(self):
         if self.depth is not None:
-            depth_correction = self.pid_depth.compute(self.depth - self.desired_depth, 0.1)
+            depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
             movement = ManualControl()
             movement.z = depth_correction
-            self.get_logger().info(f'\nCurrent Speed: {depth_correction}\nDepth: {self.depth}')
+            self.get_logger().info(f'\nCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
             self.move_publisher.publish(movement)
-
-    def move_vertical(self, desired):
-        self.desired_depth = desired
-        if not self.vert_timer.is_ready():
-            self.vert_timer.reset()
-
-    def stop_timer(self):
-        self.vert_timer.cancel()
-        self.get_logger().info('Timer stopped.')
 
 def main(args=None):
     rclpy.init(args=args)
