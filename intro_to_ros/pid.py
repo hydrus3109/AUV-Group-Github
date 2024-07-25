@@ -13,9 +13,9 @@
 #ros2  interface show your_msg_library/msg/YourMessageType
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
 import numpy as np
+import time
 
 import matplotlib as plt
 
@@ -58,12 +58,13 @@ class PIDNode(Node):
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
         self.depth = float()
         self.desired_depth = None
-        self.prev_time = 0
+        self.prev_time = time.time()
 
 
     def reset(self):
         self.integral = 0.0
         self.previous_error = 0.0
+        self.prev_time = time.time()
 
     def compute(self, error, dt):
         self.integral += error*dt
@@ -113,6 +114,7 @@ def main(args=None):
         #print(move_node.array)
        #plt.plot(x, move_node.array)
        #plt.savefig("plot.png")
+        print("hiiiiii")
         move_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
