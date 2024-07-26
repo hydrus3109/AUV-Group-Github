@@ -140,12 +140,9 @@ if __name__ == '__main__':
     main()
 
 
-
-
-"""
-- node:
+"""- node:
     pkg: "intro_to_ros"
-    exec: "pid"
-    name: "pid"
-    namespace: ""
-"""
+    exec: "pid_depth"
+    name: "pid_depth"
+    namespace: """""
+

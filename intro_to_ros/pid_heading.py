@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from mavros_msgs.msg import ManualControl, Altitude
-from std_msgs.msg import Float64
+from std_msgs.msg import Int16
 import numpy as np
 import math
 
@@ -34,21 +34,21 @@ class PIDHeadingNode(Node):
             10
         )
         self.heading_subscriber = self.create_subscription(
-            Float64,
+            Int16,
             'bluerov2/heading',
             self.heading_callback,
             10
         )
 
         self.desired_heading_subscriber = self.create_subscription(
-            Float64,
+            Int16,
             'bluerov2/desired_heading',
             self.desired_heading_callback,
             10
         )
-        self.heading_derivative_subscriber = self.cre_subscription(
-            Float64,
-            'bluerov2/angular_speed',
+        self.heading_derivative_subscriber = self.create_subscription(
+            Imu,
+            'bluerov2/imu',
             self.heading_derivative_callback,
             10
         )
@@ -59,8 +59,8 @@ class PIDHeadingNode(Node):
         self.ki = 7
         self.kd = 15
         self.max_integral = 4.0
-        self.min_output = -20.0
-        self.max_output = 20.0
+        self.min_output = -100.0
+        self.max_output = 100.0
         self.integral = 0.0
         self.previous_error = 0.0
         """"""
@@ -79,7 +79,7 @@ class PIDHeadingNode(Node):
         self.previous_error = 0.0
         self.prev_time = None()
 
-    def compute(self, error):
+    def compute(self, error,dt):
         self.array = np.append(self.array, [error])
         
         self.integral += error*dt
@@ -87,8 +87,8 @@ class PIDHeadingNode(Node):
 
         self.derivative = self.heading_derivative
 
-        proportional = self.kp / 1.8 * error
-        output = proportional + (self.ki * self.integral / 1.8) + (self.kd * self.derivative / 1.8)
+        proportional = self.kp * error
+        output = proportional + (self.ki * self.integral) + (self.kd * self.derivative)
         self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *self.derivative}')
         
         output = max(min(output, self.max_output), self.min_output)
@@ -97,7 +97,7 @@ class PIDHeadingNode(Node):
         return output
 
     def heading_callback(self, msg):
-        self.heading = msg.relative
+        self.heading = msg.data
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         if self.prev_time != None and self.desired_heading != None:
             self.calc_publish_heading()
@@ -106,14 +106,16 @@ class PIDHeadingNode(Node):
 
 
     def desired_heading_callback(self, msg):
-        self.desired_heading = msg.relative
+        self.desired_heading = msg.data
         
     def heading_derivative_callback(self, msg):
-        self.heading_derivative = msg.relative
+        self.heading_derivative = msg.angular_velocity.z
     def calc_publish_heading(self):
         if self.heading is not None and self.timestamp - self.prev_time > 0:
-            error = max(((self.desired_heading - self.current_heading + 180) % 360 - 180), 50)
-            heading_correction = self.compute(error)
+            error1 = ((self.desired_heading - self.current_heading + 180) % 360 - 180)/1.8
+            
+           # error2 = math.abs(100*math.sin(math.pi/180*x))*math.sin(x*math.pi/180)/math.abs(math.sin(x*math.pi/180))
+            heading_correction = self.compute(error1, self.timestamp-self.prev_time)
             movement = ManualControl()
             movement.r = heading_correction
             self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
