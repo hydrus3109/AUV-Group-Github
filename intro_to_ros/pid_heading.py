@@ -68,9 +68,7 @@ class PIDHeadingNode(Node):
         #self.pid_yaw = PIDController(0.5, 0.1, 0.05, 1.0, -50, 50)
         self.heading = float()
         self.desired_heading = None
-        self.heading_derivative = None
-        self.prev_time = None
-        
+        self.heading_derivative = None        
         self.array = np.array([])
 
 
@@ -79,17 +77,17 @@ class PIDHeadingNode(Node):
         self.previous_error = 0.0
         self.prev_time = None()
 
-    def compute(self, error,dt):
+    def compute(self, error):
         self.array = np.append(self.array, [error])
         
-        self.integral += error*dt
-        self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
+        #self.integral += error*dt
+        #self.integral = max(min(self.integral, self.max_integral), -self.max_integral)
 
         self.derivative = self.heading_derivative
 
         proportional = self.kp * error
-        output = proportional + (self.ki * self.integral) + (self.kd * self.derivative)
-        self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *self.derivative}')
+        output = proportional + (self.kd * self.derivative)
+        self.get_logger().info(f'\n Kp: {proportional} Kd: {self.kd *self.derivative}')
         
         output = max(min(output, self.max_output), self.min_output)
 
@@ -98,10 +96,8 @@ class PIDHeadingNode(Node):
 
     def heading_callback(self, msg):
         self.heading = msg.data
-        self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
         if self.prev_time != None and self.desired_heading != None:
             self.calc_publish_heading()
-        self.prev_time = self.timestamp
         #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
@@ -111,11 +107,11 @@ class PIDHeadingNode(Node):
     def heading_derivative_callback(self, msg):
         self.heading_derivative = msg.angular_velocity.z
     def calc_publish_heading(self):
-        if self.heading is not None and self.timestamp - self.prev_time > 0:
+        if self.heading is not None:
             error1 = ((self.desired_heading - self.current_heading + 180) % 360 - 180)/1.8
             
            # error2 = math.abs(100*math.sin(math.pi/180*x))*math.sin(x*math.pi/180)/math.abs(math.sin(x*math.pi/180))
-            heading_correction = self.compute(error1, self.timestamp-self.prev_time)
+            heading_correction = self.compute(error1)
             movement = ManualControl()
             movement.r = heading_correction
             self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
