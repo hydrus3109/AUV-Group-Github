@@ -81,7 +81,7 @@ class ImageSubscriber(Node):
     
     def line_reduct_v2(self, lines, slope_margin):
         """
-        
+        This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
         """
         margin = slope_margin
         slopes = self.get_slopes_intercepts(lines)[0]
@@ -104,6 +104,9 @@ class ImageSubscriber(Node):
 
 
     def detect_lanes(self, lines, slope_threshold=0.05, intercept_threshold=1):
+        """
+        This method detects the lane lines in the pool
+        """
         slopes, intercepts = self.get_slopes_intercepts(lines)
         lanes = []
         used_lines = set()  # Keep track of lines that have been assigned to a lane
@@ -136,6 +139,9 @@ class ImageSubscriber(Node):
         return lanes
 
     def get_lane_center(self,lanes, img_width):
+        """
+        This method calculates the center lane 
+        """
         if not lanes:
             return None, None
         
