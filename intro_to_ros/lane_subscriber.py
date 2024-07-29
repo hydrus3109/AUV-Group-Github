@@ -1,37 +1,70 @@
 #!/usr/bin/env python
 
+# import necessary libraries
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from std_msgs.msg import Int16
 import numpy as np
 
 import cv2
 
-
+# create image subscriber class
 class ImageSubscriber(Node):
     def __init__(self):
         super().__init__("image_subscriber")
 
+        # initialize interface between ROS and OpenCV
         self.cvb = CvBridge()
 
+        # subscribe to receive camera frames
         self.subscription = self.create_subscription(
             Image, "bluerov2/camera", self.image_callback, 10
         )
 
+        # subscribe to heading topic to get current heading
+        self.heading_subscriber = self.create_subscription(
+            Int16,
+            'bluerov2/heading',
+            self.heading_callback,
+            10
+        )
 
-    def detect_lines(self, img, threshold1=200, threshold2=300, apertureSize=5, minLineLength=600, maxLineGap= 50):
+        # subscribe to desired_heading topic which will be based on AUV's angle to april tag(s)
+        self.desired_heading_publisher = self.create_publisher(
+            Int16,
+            'bluerov2/desired_heading',
+            10
+        )
+
+    def heading_callback(self, msg):
+        """This method logs and stores int16 heading from subscriber"""
+        self.heading = msg.data
+
+    def detect_lines(self, img, threshold1=200, threshold2=300, apertureSize=5, minLineLength=600, maxLineGap= 80):
+        """
+        This method detects all straight edges in an image using a Probabilistic Hough Transform
+        """
+
+        # convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Canny algorithm implements voting procedure to detect edges (boundaries) in an image
         edges = cv2.Canny(gray, threshold1, threshold2, apertureSize=apertureSize)
         
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, minLineLength, maxLineGap)
+        # Detect and return list of lines detected
+        lines = cv2.HoughLinesP(edges, 10, np.pi/180, 100, minLineLength, maxLineGap)
         if lines is not None:
             lines = [line[0] for line in lines]  # Extract the actual coordinates of the lines
         else:
             lines = []
         return lines
-
+    
     def get_slopes_intercepts(self, lines):
+        """
+        This method calculates the slopes and intercepts of the lines detected by the Probabilistic Hough Transform
+        """
         slopes = []
         intercepts = []
         for line in lines:
@@ -45,6 +78,30 @@ class ImageSubscriber(Node):
             slopes.append(slope)
             intercepts.append(intercept)
         return slopes, intercepts
+    
+    def line_reduct_v2(self, lines, slope_margin):
+        """
+        
+        """
+        margin = slope_margin
+        slopes = self.get_slopes_intercepts(lines)[0]
+        line_dict = dict()
+        for i in range(len(lines)):
+            line_dict.update({slopes[i]:lines[i]})
+        
+        myKeys = list(line_dict.keys())
+        myKeys.sort()
+        sorted_dict = {i: line_dict[i] for i in myKeys}
+        
+        last_slope = - 1000
+        final_lines = []
+        for key in myKeys:
+            if(abs(key-last_slope) > margin):
+                final_lines.append(sorted_dict[key])
+            last_slope = key
+
+        return final_lines
+
 
     def detect_lanes(self, lines, slope_threshold=0.05, intercept_threshold=1):
         slopes, intercepts = self.get_slopes_intercepts(lines)
@@ -102,11 +159,12 @@ class ImageSubscriber(Node):
         return closest_intercept, closest_slope
 
     def recommend_direction(self, center_intercept, slope, img_width):
+        FOV_HOR = 80
         if center_intercept is None or slope is None:
             return "unknown"
-        img_center_x = img_width // 2
         if center_intercept is not None:
-            return center_intercept - img_center_x
+            x = center_intercept
+            return FOV_HOR*(x-img_width/2)/img_width
 
     def image_callback(self, msg: Image):
         """
@@ -118,7 +176,15 @@ class ImageSubscriber(Node):
         """
         # Convert Image message to OpenCV image
         image = self.cvb.imgmsg_to_cv2(msg)
-
+        imgwidth = np.shape(image)[1]
+        lines = self.detect_lines(image)
+        lines = self.line_reduct_v2(lines)
+        lanes = self.detect_lanes(lines)
+        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
+        correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
+        self.desired_heading_publisher.publish(correction + self.heading)
+        
+        
         # Save the image
         cv2.imwrite("image.png", image)
 

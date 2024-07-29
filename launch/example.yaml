@@ -24,10 +24,10 @@ launch:
     name: "pid_heading"
     namespace: ""
 
-# - node:
-#     pkg: "intro_to_ros"
-#     exec: "pid_depth"
-#     name: "pid_depth"
-#     namespace: ""
+ - node:
+     pkg: "intro_to_ros"
+     exec: "pid_depth"
+     name: "pid_depth"
+     namespace: ""
 
 
