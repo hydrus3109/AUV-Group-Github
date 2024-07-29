@@ -34,7 +34,8 @@ setup(
                             'pressure = intro_to_ros.pressure_to_depth:main',
                             "ros_bluerov2_interface = rosmav.ros_bluerov2_interface:main",
                             "pid_depth = intro_to_ros.pid_depth:main",
-                            "pid_heading = intro_to_ros.pid_heading:main"
+                            "pid_heading = intro_to_ros.pid_heading:main",
+                            "camera_subscriber = intro_to_ros.camera_subscriber:main"
         ],
     },
 )

@@ -26,8 +26,6 @@ launch:
 
  - node:
      pkg: "intro_to_ros"
-     exec: "pid_depth"
-     name: "pid_depth"
+     exec: "camera_subscriber"
+     name: "camera_subscriber"
      namespace: ""
-
-
