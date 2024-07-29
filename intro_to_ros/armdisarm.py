@@ -5,7 +5,7 @@
 
 #cd ~/auvc_ws
 #colcon build --packages-select intro_to_ros --symlink-install
-#source ~/auvc_ws/install/setup.zs  h
+#source ~/auvc_ws/install/setup.zsh
 
 #ros2 topic list
 #ros2 topic type /your/topic
