@@ -23,20 +23,22 @@ class CameraSubscriber(Node):
             self.image_callback,
             10
         )
-        self.get_logger().info("starting subscriber node")
+        self.get_logger().info("starting camera subscriber node")
+        
         self.heading_subscriber = self.create_subscription(
             Int16,
             'bluerov2/heading',
             self.heading_callback,
             10
         )
+        self.get_logger().info("starting heading subscriber node")
         
         self.heading_publisher = self.create_subscription(
             Int16,
             "bluerov2/desired_heading",
             10
         )
-        
+        self.get_logger().info("starting heading publsiher node")
         
         self.heading = None
         self.x_angle = None
