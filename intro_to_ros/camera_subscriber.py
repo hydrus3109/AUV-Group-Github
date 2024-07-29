@@ -76,7 +76,7 @@ class CameraSubscriber(Node):
             self.x_angle = self.calculate_rel_horizontal_angle(tag)
             y_angle = self.calculate_rel_verticle_angle(tag)
             z_distance = self.calculate_distance(tag)
-            self.logger(f"X Angle: {self.x_angle}, Y Angle: {y_angle}, Z Distance: {z_dist}")
+            self.logger(f"X Angle: {self.x_angle}, Y Angle: {y_angle}, Z Distance: {z_distance}")
             if (self.heading != None) and (self.x_angle != None):
                 self.heading_publisher.publish(self.heading + self.x_angle)
             
