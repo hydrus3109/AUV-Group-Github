@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Imu, Range
 from mavros_msgs.msg import ManualControl, Altitude, OverrideRCIn
-from std_msgs.msg import Int16, Float32
+from std_msgs.msg import Int16, Float32, Bool
 import numpy as np
 import time
 
@@ -43,7 +43,7 @@ class AUVController(Node):
         )
 
         self.targetted_subscriber = self.create_subscription(
-            bool,
+            Bool,
             'bluerov2/targetted',
             self.targetted_callback,
             10

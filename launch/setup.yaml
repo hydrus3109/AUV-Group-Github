@@ -12,8 +12,8 @@ launch:
     name: "bluerov2_camera_interface"
     namespace: ""
 
-- node:
-    pkg: "intro_to_ros"
-    exec: "armdisarm"
-    name: "arm"
-    namespace: ""
+# - node:
+#     pkg: "intro_to_ros"
+#     exec: "armdisarm"
+#     name: "arm"
+#     namespace: ""
