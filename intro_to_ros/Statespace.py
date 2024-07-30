@@ -69,6 +69,8 @@ class AUVController(Node):
         self.current_depth = None
         self.distance_to_opponent = None
         self.relative_heading_to_opponent = None
+        self.retreat_countdown = 60
+        self.depth_difference = None
         self.target_found = False
 
     def distance_callback(self, msg):
@@ -78,10 +80,15 @@ class AUVController(Node):
             self.distance_to_opponent = None
     def camera_callback  (self, msg):
         # Process image to detect the opponent and update distance and relative heading
-        self.distance_to_opponent=self.distance_to_opponent,
+        self.distance_to_opponent=self.distance_to_opponent
         self.relative_heading_to_opponent=self.relative_heading_to_opponent
         
         pass
+        if self.distance_to_opponent < 2: #replace this 
+            self.flash()
+        
+        
+
         
     def depth_callback(self, msg):
         self.current_depth = msg.relative
@@ -156,9 +163,20 @@ class AUVController(Node):
     def orbit(self):
         # Implement orbiting behavior around the opponent
         cmd = ManualControl()
-        cmd.x = 100  # Neutral
-        cmd.r = -30  # Maintain current heading
+        cmd.y = 100  # Neutral
+        newheading = Int16()
+        newheading.data = self.relative_heading_to_opponent
+        self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
+        if self.depth_difference is not None:
+            newdepth = Altitude
+            newdepth.local = self.depth_difference
+            self.desired_depth_publisher.publish(newdepth)
+        else:
+            newdepth = Altitude
+            newdepth.local = 0.5
+            self.desired_depth_publisher.publish(newdepth)
+
     def turn_on_lights(self, movement):
         """turns on auv lights"""
         movement.channels[8] = 2000
