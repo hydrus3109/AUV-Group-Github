@@ -41,7 +41,7 @@ class CameraSubscriber(Node):
         self.get_logger().info("starting camera subscriber node")
         
         self.heading_subscriber = self.create_subscription(
-            Int16,
+            bool,
             'bluerov2/heading',
             self.heading_callback,
             10
@@ -53,6 +53,13 @@ class CameraSubscriber(Node):
             "bluerov2/desired_heading",
             10
         )
+
+        self.targetted_publisher = self.create_publisher(
+            Int16,
+            "bluerov2/targetted",
+            10
+        )
+
         self.get_logger().info("starting heading publsiher node")
         
         self.distance_publisher = self.create_publisher(
@@ -74,7 +81,7 @@ class CameraSubscriber(Node):
                             refine_edges=1,
                             decode_sharpening=0.25,
                             debug=0)
-        
+        self.targetting_fails = 0
         
     def calculate_rel_horizontal_angle(self, img, tag):
         x = tag.center[0]
@@ -93,6 +100,8 @@ class CameraSubscriber(Node):
         
     def image_callback(self, msg):
         
+        FAIL_THRESHOLD = 3
+
         if not self.Done:
             return
         self.Done = False
@@ -106,6 +115,7 @@ class CameraSubscriber(Node):
             tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
             
             if len(tags) > 0:
+                self.targetting_fails = 0
                 for tag in tags:
                     self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
                     self.y_angle = self.calculate_rel_verticle_angle(img, tag)
@@ -118,7 +128,20 @@ class CameraSubscriber(Node):
                         message = Int16()
                         message.data = self.heading + int(self.x_angle)
                         self.heading_publisher.publish(message)
-                        
+                    self.targetted_publisher.publish(True)
+            else:
+                #YOLO STUFF
+                #if len(results) == 0:
+                if self.targetting_fails > FAIL_THRESHOLD:
+                    message = Int16()
+                    message.data = 0
+                    self.heading_publisher.publish(message)
+                    self.targetted_publisher.publish(False)
+                else:
+                    self.targetting_fails += 1
+                #else:
+                #    self.targetting_fails = 0
+
                         
             self.Done = True              
 

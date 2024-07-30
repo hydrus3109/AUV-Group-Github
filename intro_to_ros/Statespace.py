@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Imu, Range
 from mavros_msgs.msg import ManualControl, Altitude, OverrideRCIn
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Float32
 import numpy as np
 import time
 
@@ -33,7 +33,22 @@ class AUVController(Node):
             'bluerov2/heading',
             self.heading_callback,
             10
-        )        
+        )      
+
+        self.distance_subscriber = self.create_subscription(
+            Float32,
+            "bluerov2/distance",
+            self.distance_callback,
+            10
+        )
+
+        self.targetted_subscriber = self.create_subscription(
+            bool,
+            'bluerov2/targetted',
+            self.targetted_callback,
+            10
+        )
+
         self.move_publisher = self.create_publisher(                    #Initialize the publisher
             OverrideRCIn, #Type of message that's boreadcasted
             "bluerov2/override_rc", #Topic name
@@ -54,14 +69,20 @@ class AUVController(Node):
         self.current_depth = None
         self.distance_to_opponent = None
         self.relative_heading_to_opponent = None
+        self.target_found = False
 
+    def distance_callback(self, msg):
+        if(self.target_found):
+            self.distance_to_opponent = msg.data
+        else:
+            self.distance_to_opponent = None
     def camera_callback  (self, msg):
         # Process image to detect the opponent and update distance and relative heading
         self.distance_to_opponent=self.distance_to_opponent,
         self.relative_heading_to_opponent=self.relative_heading_to_opponent
+        
         pass
         
-
     def depth_callback(self, msg):
         self.current_depth = msg.relative
 
@@ -70,6 +91,11 @@ class AUVController(Node):
             self.start_heading = msg.data
         self.current_heading = msg.data
 
+    def targetted_callback(self,msg):
+        if(msg.data):
+            self.target_found = True
+        else:
+            self.target_found = False
     def update_state(self):
         # Update the current state based on sensor data
         if self.current_state == State.SCANNING:
