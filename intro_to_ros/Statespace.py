@@ -2,22 +2,16 @@ from enum import Enum, auto
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Imu, Range
-from mavros_msgs.msg import ManualControl, Altitude
+from mavros_msgs.msg import ManualControl, Altitude, OverrideRCIn
 from std_msgs.msg import Int16
 import numpy as np
+import time
 
 class State(Enum):
     SCANNING = auto()
     MOVING = auto()
     ORBITING = auto()
     FLASHING = auto()
-
-class GameState:
-    def __init__(self, heading, depth, distance_to_opponent, relative_heading_to_opponent):
-        self.heading = heading
-        self.depth = depth
-        self.distance_to_opponent = distance_to_opponent
-        self.relative_heading_to_opponent = relative_heading_to_opponent
 
 class AUVController(Node):
     def __init__(self):
@@ -39,8 +33,22 @@ class AUVController(Node):
             'bluerov2/heading',
             self.heading_callback,
             10
+        )        
+        self.move_publisher = self.create_publisher(                    #Initialize the publisher
+            OverrideRCIn, #Type of message that's boreadcasted
+            "bluerov2/override_rc", #Topic name
+            10
         )
-        
+        self.desired_depth_publisher = self.create_publisher(
+            Altitude,
+            'bluerov2/desired_depth',
+            10
+        )
+        self.desired_heading_publisher = self.create_publisher(
+            Int16,
+            10
+        )
+        self.start_heading = None
         self.current_state = State.SCANNING
         self.current_heading = None
         self.current_depth = None
@@ -49,26 +57,21 @@ class AUVController(Node):
 
     def camera_callback  (self, msg):
         # Process image to detect the opponent and update distance and relative heading
+        self.distance_to_opponent=self.distance_to_opponent,
+        self.relative_heading_to_opponent=self.relative_heading_to_opponent
         pass
-        self.update_state()
+        
 
     def depth_callback(self, msg):
         self.current_depth = msg.relative
 
     def heading_callback(self, msg):
-        self.heading = msg.data
+        if self.start_heading is None:
+            self.start_heading = msg.data
+        self.current_heading = msg.data
 
     def update_state(self):
         # Update the current state based on sensor data
-        self.current_game_state = GameState(
-            heading=self.current_heading,
-            depth=self.current_depth,
-            distance_to_opponent=self.distance_to_opponent,
-            relative_heading_to_opponent=self.relative_heading_to_opponent
-        )
-        self.transition_state()
-
-    def transition_state(self):
         if self.current_state == State.SCANNING:
             if self.distance_to_opponent is not None:
                 self.current_state = State.MOVING
@@ -93,35 +96,61 @@ class AUVController(Node):
             self.flash()
 
     def scan(self):
-        # Implement scanning behavior, e.g., rotating in place to find the opponent
+        """scanning behaviour for finding other robot"""
+        #maintain low depth
+        self.depth_real = Altitude()
+        self.depth_real.relative = 0.9
+        self.desired_depth_publisher.publish(self.depth_real)
+        newheading = Int16()
+        newheading.data = self.start_heading + 10
+        self.desired_heading_publisher.publish(newheading)
+        time.sleep(1)
+        newheading.data = self.start_heading- 10
+        self.desired_depth_publisher.publish(newheading)
+        time.sleep(1)
+        newheading.data = self.start_heading
+        self.desired_heading_publisher.publish(newheading)
+        time.sleep(1)
         cmd = ManualControl()
-        cmd.x = 1500  # Neutral
-        cmd.y = 1500  # Neutral
-        cmd.z = 1500  # Neutral
-        cmd.r = 1600  # Rotate right
-        self.manual_control_publisher.publish(cmd)
+        cmd.x = 50  
+        self.move_publisher.publish(cmd)
+        time.sleep(1)
+        cmd.x = 0
+        self.move_publisher.publish(cmd)
 
     def move(self):
         # Implement moving behavior towards the opponent
         cmd = ManualControl()
-        cmd.x = 1600  # Move forward
-        cmd.y = 1500  # Neutral
-        cmd.z = 1500  # Neutral
-        cmd.r = 1500 + int((self.relative_heading_to_opponent / 180.0) * 500)  # Adjust heading
+        cmd.x = 50  # Move forward
+        newheading = Int16()
+        newheading.data = self.relative_heading_to_opponent
+        self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
 
     def orbit(self):
         # Implement orbiting behavior around the opponent
         cmd = ManualControl()
-        cmd.x = 1500  # Neutral
-        cmd.y = 1600  # Move right
-        cmd.z = 1500  # Neutral
-        cmd.r = 1500  # Maintain current heading
+        cmd.x = 100  # Neutral
+        cmd.r = -30  # Maintain current heading
         self.manual_control_publisher.publish(cmd)
+    def turn_on_lights(self, movement):
+        """turns on auv lights"""
+        movement.channels[8] = 2000
+        movement.channels[9] = 2000    
+        self.move_publisher.publish(movement)
 
+    def turn_off_lights(self, movement):
+        """turns off auv lights"""
+        movement.channels[8] = 1000
+        movement.channels[9] = 1000
+        self.move_publisher.publish(movement)
     def flash(self):
-        # Implement flashing behavior
-        # This is a placeholder, actual implementation will depend on the hardware and how the flashing is triggered
+        for i in range (3):
+            self.turn_on_lights(self.movement)
+            time.sleep(0.2)
+            self.turn_off_lights(self.movement)
+            time.sleep(0.2)
+        self.turn_off_lights(self.movement)
         self.get_logger().info("Flashing light!")
 
     def run(self):
@@ -130,15 +159,23 @@ class AUVController(Node):
             self.update_state()
             self.perform_action()
 
+
 def main(args=None):
     rclpy.init(args=args)
-    controller = AUVController()
-    controller.run()
-    controller.destroy_node()
-    rclpy.shutdown()
+    node = AUVController()
+
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        print("\nKeyboardInterrupt received, shutting down...")
+    finally:
+        node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
+
 
 
 

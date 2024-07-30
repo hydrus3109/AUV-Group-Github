@@ -42,7 +42,7 @@ class ImageSubscriber(Node):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
 
-    def detect_lines(self, img, threshold1=200, threshold2=300, apertureSize=5, minLineLength=600, maxLineGap= 80):
+    def detect_lines(self, img, threshold1=100, threshold2=150, apertureSize=5, minLineLength=300, maxLineGap= 40):
         """
         This method detects all straight edges in an image using a Probabilistic Hough Transform
         """
@@ -188,6 +188,7 @@ class ImageSubscriber(Node):
         lanes = self.detect_lanes(lines)
         closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
         correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
+        self.get_logger().info(correction+self.heading)
         self.desired_heading_publisher.publish(correction + self.heading)
         
         
