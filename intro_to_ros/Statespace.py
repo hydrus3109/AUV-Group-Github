@@ -57,7 +57,7 @@ class AUVController(Node):
 
     def camera_callback  (self, msg):
         # Process image to detect the opponent and update distance and relative heading
-        self.distance_to_opponent=self.distance_to_opponent,
+        self.distance_to_opponent=self.distance_to_opponent
         self.relative_heading_to_opponent=self.relative_heading_to_opponent
         pass
         
@@ -130,8 +130,10 @@ class AUVController(Node):
     def orbit(self):
         # Implement orbiting behavior around the opponent
         cmd = ManualControl()
-        cmd.x = 100  # Neutral
-        cmd.r = -30  # Maintain current heading
+        cmd.y = 100  # Neutral
+        newheading = Int16()
+        newheading.data = self.relative_heading_to_opponent
+        self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
     def turn_on_lights(self, movement):
         """turns on auv lights"""
