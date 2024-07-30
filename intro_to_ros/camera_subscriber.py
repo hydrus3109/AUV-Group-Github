@@ -1,6 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-#usr/bin/python3 -m pip install dt_apriltags --break-system-packages
+#~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUR_COMPUTER_IP:14550
+#ros2 launch mavros apm.launch fcu_url:=udp://192.168.2.2:14550@14555 gcs_url:=udp://:14550@YOUR_COMPUTER_IP:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
+
+#cd ~/auvc_ws
+#colcon build --packages-select intro_to_ros --symlink-install
+#source ~/auvc_ws/install/setup.zsh
+
+#ros2 topic list
+#ros2 topic type /your/topic
+#ro2 topic echo /your/topic :)))))
+#ros2  interface show your_msg_library/msg/YourMessageType
 
 import rclpy
 from rclpy.node import Node
@@ -8,7 +18,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Int16
 from cv_bridge import CvBridge
 import numpy as np
-from std_msgs.msg import Int16, Float64
+from std_msgs.msg import Int16, Float32
 import cv2
 import matplotlib.pyplot as plt
 from dt_apriltags import Detector
@@ -41,6 +51,13 @@ class CameraSubscriber(Node):
         self.heading_publisher = self.create_publisher(
             Int16,
             "bluerov2/desired_heading",
+            10
+        )
+        self.get_logger().info("starting heading publsiher node")
+        
+        self.distance_publisher = self.create_publisher(
+            Float32,
+            "bluerov2/distance",
             10
         )
         self.get_logger().info("starting heading publsiher node")
@@ -95,13 +112,12 @@ class CameraSubscriber(Node):
                     if (self.heading != None) and (self.x_angle != None):
                         message = Int16()
                         message.data = self.heading + int(self.x_angle)
+                        message2 = Int16()
+                        message2.data = self.z_distance
                         self.heading_publisher.publish(message)
-            self.Done = True            
-        
-                    
-            
-            
-            
+                        self.distance_publisher.publish(message2)
+                        
+            self.Done = True              
 
 def main(args=None):
     rclpy.init(args=args)

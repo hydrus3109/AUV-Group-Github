@@ -24,6 +24,12 @@ launch:
     name: "pid_heading"
     namespace: ""
 
+    - node:
+    pkg: "intro_to_ros"
+    exec: "flashing_lights"
+    name: "flashing_lights"
+    namespace: ""
+
  - node:
      pkg: "intro_to_ros"
      exec: "camera_subscriber"
