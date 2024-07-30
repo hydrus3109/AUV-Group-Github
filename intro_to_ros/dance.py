@@ -57,8 +57,9 @@ class MoveNode(Node):
         
         movement.channels = [65535] * 18
         self.turn_off_lights(movement)
-        self.move_forward(movement,40,4)
+        self.move_forward(movement,20,4)
         sleep(4.5)
+        self.stop()
         #funky forp 4 sec (ccw)
         #funky for 2.2 sec (cw)
         #wait for 1.2 sec

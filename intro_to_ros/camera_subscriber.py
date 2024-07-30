@@ -92,12 +92,14 @@ class CameraSubscriber(Node):
         self.heading = msg.data   
         
     def image_callback(self, msg):
-        self.get_logger().info("A")
+        
         if not self.Done:
             return
-        self.get_logger().info("B")
         self.Done = False
-        img = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        img = self.bridge.imgmsg_to_cv2(msg)
+        
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", img)
+        
         if img.any()!=None:
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
             
@@ -106,16 +108,17 @@ class CameraSubscriber(Node):
             if len(tags) > 0:
                 for tag in tags:
                     self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
-                    y_angle = self.calculate_rel_verticle_angle(img, tag)
-                    z_distance = self.calculate_distance(img, tag)
-                    self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {y_angle}, Z Distance: {z_distance}")
+                    self.y_angle = self.calculate_rel_verticle_angle(img, tag)
+                    self.z_distance = self.calculate_distance(img, tag)
+                    self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
+                    message2 = Float32()
+                    message2.data = self.z_distance*1.0
+                    self.distance_publisher.publish(message2)
                     if (self.heading != None) and (self.x_angle != None):
                         message = Int16()
                         message.data = self.heading + int(self.x_angle)
-                        message2 = Int16()
-                        message2.data = self.z_distance
                         self.heading_publisher.publish(message)
-                        self.distance_publisher.publish(message2)
+                        
                         
             self.Done = True              
 
