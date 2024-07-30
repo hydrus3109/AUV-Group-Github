@@ -171,6 +171,8 @@ class ImageSubscriber(Node):
         if center_intercept is not None:
             x = center_intercept
             return FOV_HOR*(x-img_width/2)/img_width
+    
+    
 
     def image_callback(self, msg: Image):
         """

@@ -4,7 +4,7 @@
 #ros2 launch mavros apm.launch fcu_url:=udp://192.168.2.2:14550@14555 gcs_url:=udp://:14550@YOUR_COMPUTER_IP:14550 tgt_system:=1 tgt_component:=1 system_id:=255 component_id:=240
 
 #cd ~/auvc_ws
-#colcon build --packages-select intro_to_ros --symlink-install
+#colcon build --symlink-install
 #source ~/auvc_ws/install/setup.zsh
 
 #ros2 topic list
@@ -24,10 +24,11 @@ FOV_HOR = 80
 FOV_VER = 64 
 
 
-class CameraSubscriber(Node):
+class LightSubscriber(Node):
     Done = True
     def __init__(self):
-        super().__init__("bluerov")
+        super().__init__("light_subscriber")
+        
         self.subscriber = self.create_subscription(
             Float32,
             "bluerov2/distance",
@@ -44,7 +45,7 @@ class CameraSubscriber(Node):
         )
         self.get_logger().info("starting heading subscriber node")
         
-        self.heading_publisher = self.create_publisher(
+        self.move_publisher = self.create_publisher(
             OverrideRCIn,
             "bluerov2/override_rc",
             10
@@ -52,6 +53,7 @@ class CameraSubscriber(Node):
         self.get_logger().info("starting heading publsiher node")
 
         self.movement = OverrideRCIn()
+        self.movement.channels = [65535] * 18
         self.distance = None
         self.x_angle = None
 
@@ -59,29 +61,31 @@ class CameraSubscriber(Node):
         
     def distance_callback(self, msg):
         """logs and stores float64 distance from subscriber"""
+
+        self.get_logger().info("HELLLLLLLO")
         self.distance = msg.data
-        if self.movement.channels[8]==0 and self.movement.channels[8]==0:
-            self.flashing_lights()
+        self.turn_on_lights()
         
     def heading_callback(self, msg):
         """logs and stores int16 heading from subscriber"""
-        self.heading = msg.data   
+        self.x_angle = msg.data   
         
-    def turn_on_lights(self, movement):
+    def turn_on_lights(self):
         """turns on auv lights"""
-        movement.channels[8] = 2000
-        movement.channels[9] = 2000    
-        self.move_publisher.publish(movement)
+        self.movement.channels[8] = 2000
+        self.movement.channels[9] = 2000    
+        self.move_publisher.publish(self.movement)
 
-    def turn_off_lights(self, movement):
+    def turn_off_lights(self):
         """turns off auv lights"""
-        movement.channels[8] = 1000
-        movement.channels[9] = 1000
-        self.move_publisher.publish(movement)
+        self.movement.channels[8] = 1000
+        self.movement.channels[9] = 1000
+        self.move_publisher.publish(self.movement)
         
     def flashing_lights(self):
         '''detects if a robot has been seen and flashes lights'''
-        
+        if self.x_angle is None:
+            return
         if abs(self.x_angle) < 10 and self.distance < 2:
             for i in range (3):
                 self.turn_on_lights(self.movement)
@@ -94,8 +98,7 @@ class CameraSubscriber(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    node = CameraSubscriber()
-
+    node = LightSubscriber()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:

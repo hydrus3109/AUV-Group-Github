@@ -1,0 +1,19 @@
+launch: 
+
+- node:
+    pkg: "rosmav"
+    exec: "ros_bluerov2_interface"
+    name: "bluerov2_interface"
+    namespace: ""
+
+- node:
+    pkg: "rosmav"
+    exec: "bluerov2_camera_interface"
+    name: "bluerov2_camera_interface"
+    namespace: ""
+
+- node:
+    pkg: "intro_to_ros"
+    exec: "armdisarm"
+    name: "arm"
+    namespace: ""
