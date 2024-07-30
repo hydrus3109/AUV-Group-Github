@@ -46,13 +46,14 @@ class CameraSubscriber(Node):
             self.heading_callback,
             10
         )
-        self.get_logger().info("starting heading subscriber node")
+        self.get_logger().info("starting heading SUB node")
         
         self.heading_publisher = self.create_publisher(
             Int16,
             "bluerov2/desired_heading",
             10
         )
+<<<<<<< Updated upstream
 
         self.targetted_publisher = self.create_publisher(
             Int16,
@@ -61,13 +62,16 @@ class CameraSubscriber(Node):
         )
 
         self.get_logger().info("starting heading publsiher node")
+=======
+        self.get_logger().info("starting heading PUB node")
+>>>>>>> Stashed changes
         
         self.distance_publisher = self.create_publisher(
             Float32,
             "bluerov2/distance",
             10
         )
-        self.get_logger().info("starting heading publsiher node")
+        self.get_logger().info("starting distance PUB node")
         
         self.heading = None
         self.x_angle = None

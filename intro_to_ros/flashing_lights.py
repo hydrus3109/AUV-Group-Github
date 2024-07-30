@@ -61,8 +61,6 @@ class LightSubscriber(Node):
         
     def distance_callback(self, msg):
         """logs and stores float64 distance from subscriber"""
-
-        self.get_logger().info("HELLLLLLLO")
         self.distance = msg.data
         self.turn_on_lights()
         
@@ -87,6 +85,7 @@ class LightSubscriber(Node):
         if self.x_angle is None:
             return
         if abs(self.x_angle) < 10 and self.distance < 2:
+            self.get_logger().info("LIGHTS")
             for i in range (3):
                 self.turn_on_lights(self.movement)
                 time.sleep(0.2)

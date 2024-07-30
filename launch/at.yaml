@@ -1,5 +1,11 @@
 launch: 
 
+# - node:
+#     pkg: "intro_to_ros"
+#     exec: "lane_subscriber"
+#     name: "lane_subscriber"
+#     namespace: ""
+
 - node:
     pkg: "intro_to_ros"
     exec: "flashing_lights"
