@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-from std_msgs.msg import Int16
+from std_msgs.msg import Int16, Bool, Float32
 from mavros_msgs.msg import ManualControl
 import numpy as np
 import cv2
@@ -41,12 +41,21 @@ class ImageSubscriber(Node):
             10
         )
 
-        self.lane_number_publisher = self.create_publisher(
-            Int16,
+        self.lateral_offset_publisher = self.create_publisher(
+            Float32,
+            'bluerov2/lateral_offset',
+            10
         )
+
+        self.more_lanes_publisher = self.create_publisher(
+            Bool,
+            'bluerov2/more_lanes'
+        )
+
         self.heading = 0
         self.imgheight = 480
         self.imgwidth = 640
+        self.no_lane_found = -10
 
         self.move_publisher = self.create_publisher(
             ManualControl,
@@ -146,7 +155,9 @@ class ImageSubscriber(Node):
                 lanes.append([lines[i], lines[best_pair]])
                 used_lines.add(i)
                 used_lines.add(best_pair)
-
+                self.no_lane_found = 0
+            else:
+                self.no_lane_found += 1 
         return lanes
 
     def draw_lanes(self, img, lanes):
@@ -157,8 +168,6 @@ class ImageSubscriber(Node):
                 x1, y1, x2, y2 = line[0]
                 cv2.line(img, (x1, y1), (x2, y2), color, 2)
         return img
-
-
 
     def get_lane_center(self, lanes, img_width):
         if not lanes:
@@ -225,11 +234,13 @@ class ImageSubscriber(Node):
         #image = self.draw_lines(image, lines)
         #self.get_logger().info(f"lines:{len(lines)}")
         lanes = self.detect_lanes(lines)
+
         self.get_logger().info(f"lanes:{len(lanes)}")
         image = self.draw_lanes(image, lanes)
         closeslope, closeintercept = self.get_lane_center(lanes, self.imgwidth)
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
+        
         if correction is not None:
             message = Int16()
             message.data = int(correction +self.heading)
@@ -239,13 +250,13 @@ class ImageSubscriber(Node):
         
         closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
         correction = self.recommend_lateral(closeintercept, imgwidth, 0.02)
+
         self.get_logger().info(correction)
-        movement = ManualControl()
-        movement.y = min(correction, 20)
-        self.get_logger().info(f'\nCurrent Power: {movement.y}')
-        self.move_publisher.publish(movement)
+        self.lateral_offset_publisher.publish(correction)
         
-        
+        message2 = Bool()
+        message2.data = self.no_lane_found <= 5
+        self.more_lanes_publisher.publish(message2)
         # Save the image
         cv2.imwrite("image.png", image)
 

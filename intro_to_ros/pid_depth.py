@@ -40,7 +40,7 @@ class PIDdepthNode(Node):
 
         self.desired_depth_subscriber = self.create_subscription(
             Altitude,
-            'bluerov2/desired_depth',
+            'PID/desired_depth',
             self.desired_depth_callback,
             10
         )

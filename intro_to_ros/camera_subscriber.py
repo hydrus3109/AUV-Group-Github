@@ -104,6 +104,8 @@ class CameraSubscriber(Node):
         self.heading = msg.data   
         
     def image_callback(self, msg):
+        
+        
         self.get_logger().info(f"{self.targetting_fails}")
         
         FAIL_THRESHOLD = 8
@@ -120,16 +122,16 @@ class CameraSubscriber(Node):
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
             
             #YOLO STUFF
-            if False or len(results) == 0:
+            if False or len(results) != 0: #Yolo found
                 self.targetting_fails = 0
 
 
 
                 self.Done = True     
-            else:     
+            else:     #Yolo not found
                 tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
                 
-                if len(tags) > 0:
+                if len(tags) > 0:   #April tag found
                     self.targetting_fails = 0
                     for tag in tags:
                         self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
@@ -149,14 +151,13 @@ class CameraSubscriber(Node):
                         self.target_msg.data = True
                         self.targetted_publisher.publish(self.target_msg)
                         self.Done = True
-                else:
-                    #bruh no target
+                else: #April tag and YOLO not found
                     if self.targetting_fails > FAIL_THRESHOLD:
                         self.message.data = int(self.heading)
                         #self.heading_publisher.publish(self.message)
                         self.target_msg.data = False
                         self.targetted_publisher.publish(self.target_msg)
-                    else:
+                    else:  #It didn't fail enough, add targetting fails
                         self.targetting_fails += 1
                 
                      
