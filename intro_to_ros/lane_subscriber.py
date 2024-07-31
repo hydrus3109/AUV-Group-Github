@@ -40,6 +40,10 @@ class ImageSubscriber(Node):
             'bluerov2/desired_heading',
             10
         )
+
+        self.lane_number_publisher = self.create_publisher(
+            Int16,
+        )
         self.heading = 0
         self.imgheight = 480
         self.imgwidth = 640
