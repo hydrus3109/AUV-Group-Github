@@ -44,34 +44,53 @@ class ImageSubscriber(Node):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
 
-    def detect_lines(self, img, threshold1=50, threshold2=150, apertureSize=3, minLineLength=100, maxLineGap= 50):
-        """
-        This method detects all straight edges in an image using a Probabilistic Hough Transform
-        """
 
-        # convert to grayscale
+    def detect_lines(self,img, threshold1=100, threshold2=200, apertureSize=5, minLineLength= 400, maxLineGap= 50):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        blur = cv2.blur(img,(5,5))
-        # Canny algorithm implements voting procedure to detect edges (boundaries) in an image
         edges = cv2.Canny(gray, threshold1, threshold2, apertureSize=apertureSize)
-        # Detect and return list of lines detected
-        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", edges)
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, 100, minLineLength, maxLineGap)
-        if lines is not None:
-            lines = [line[0] for line in lines]  # Extract the actual coordinates of the lines
-        else:
-            lines = []
+        plt.imshow(edges)
+        lines = cv2.HoughLinesP(
+                    edges,
+                    10,
+                    np.pi/180,
+                    100,
+                    minLineLength=minLineLength,
+                    maxLineGap=maxLineGap,
+            ) # detect lines
         return lines
-    
-    def get_slopes_intercepts(self, lines):
+    def line_reduct_v2(self,lines):
         """
-        This method calculates the slopes and intercepts of the lines detected by the Probabilistic Hough Transform
+        This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
         """
+        margin = 0.05
+        slopes = get_slopes_intercepts(lines)[0]
+        line_dict = dict()
+        for i in range(len(lines)):
+            line_dict.update({slopes[i]:lines[i]})
+
+        myKeys = list(line_dict.keys())
+        myKeys.sort()
+        sorted_dict = {i: line_dict[i] for i in myKeys}
+
+        last_slope = -1000
+        final_lines = []
+        for key in myKeys:
+            if(abs(key-last_slope) > margin and abs(key) > 0.3):
+                final_lines.append(sorted_dict[key])
+            last_slope = key
+        return final_lines
+        
+    def draw_lines(self, img, lines, color=(0, 255, 0)):
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(img, (x1, y1), (x2, y2), color, 2)
+        return img
+
+    def get_slopes_intercepts(self,lines):
         slopes = []
         intercepts = []
         for line in lines:
-            x1, y1, x2, y2 = line
+            x1, y1, x2, y2 = line[0]
             if x2 - x1 != 0:  # Avoid division by zero
                 slope = (y2 - y1) / (x2 - x1)
                 intercept = y1 - slope * x1
@@ -81,35 +100,8 @@ class ImageSubscriber(Node):
             slopes.append(slope)
             intercepts.append(intercept)
         return slopes, intercepts
-    
-    def line_reduct_v2(self, lines):
-        """
-        This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
-        """
-        margin = 0.1
-        slopes = self.get_slopes_intercepts(lines)[0]
-        line_dict = dict()
-        for i in range(len(lines)):
-            line_dict.update({slopes[i]:lines[i]})
-        
-        myKeys = list(line_dict.keys())
-        myKeys.sort()
-        sorted_dict = {i: line_dict[i] for i in myKeys}
-        
-        last_slope = - 1000
-        final_lines = []
-        for key in myKeys:
-            if(abs(key-last_slope) > margin):
-                final_lines.append(sorted_dict[key])
-            last_slope = key
 
-        return final_lines
-
-
-    def detect_lanes(self, lines, slope_threshold=0.05, intercept_threshold=1):
-        """
-        This method detects the lane lines in the pool
-        """
+    def detect_lanes(self, lines, slope_threshold=0.3, intercept_threshold=1):
         slopes, intercepts = self.get_slopes_intercepts(lines)
         lanes = []
         used_lines = set()  # Keep track of lines that have been assigned to a lane
@@ -141,10 +133,18 @@ class ImageSubscriber(Node):
 
         return lanes
 
-    def get_lane_center(self,lanes, img_width):
-        """
-        This method calculates the center lane 
-        """
+    def draw_lanes(self, img, lanes):
+        colors = [[0, 255, 0],[255,0,0], [0,0,255], [255,255,255], [0,0,0]]
+        for i, lane in enumerate(lanes):
+            color = colors[i%5]
+            for line in lane:
+                x1, y1, x2, y2 = line[0]
+                cv2.line(img, (x1, y1), (x2, y2), color, 2)
+        return img
+
+
+
+    def get_lane_center(self, lanes, img_width, img_height):
         if not lanes:
             return None, None
         
@@ -152,20 +152,23 @@ class ImageSubscriber(Node):
         closest_distance = float('inf')
         closest_intercept = None
         closest_slope = None
+
+        # Image center
         img_center_x = img_width // 2
 
         # Compute center of each lane and find the closest
         for lane in lanes:
             for line in lane:
                 slopes, intercepts = self.get_slopes_intercepts([line])
-                distance = abs(img_center_x - intercepts[0])
+                bottom_intercepts = (img_height - intercepts[0]) / slopes
+                distance = abs(img_center_x - bottom_intercepts)
                 
                 if distance < closest_distance:
                     closest_distance = distance
                     closest_slope = slopes[0]
-                    closest_intercept = intercepts[0]
+                    closest_intercept =bottom_intercepts
 
-        return closest_intercept, closest_slope
+        return  closest_slope, closest_intercept
 
     def recommend_direction(self, center_intercept, slope, img_width):
         FOV_HOR = 80
@@ -193,13 +196,14 @@ class ImageSubscriber(Node):
         image = self.cvb.imgmsg_to_cv2(msg)
         
         imgwidth = np.shape(image)[1]
+        imgheight = np.shape(image)[0]
         lines = self.detect_lines(image)
         image = self.draw_lines(image, lines)
         lines = self.line_reduct_v2(lines)
         #plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         lanes = self.detect_lanes(lines)
         self.get_logger().info(str(len(lanes)))
-        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth)
+        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth, imgheight)
         correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
         self.get_logger().info(correction)
         #self.desired_heading_publisher.publish(correction + self.heading)
