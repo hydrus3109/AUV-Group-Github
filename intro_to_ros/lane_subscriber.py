@@ -105,7 +105,7 @@ class ImageSubscriber(Node):
             intercepts.append(intercept)
         return slopes, intercepts
 
-    def detect_lanes(self, lines, slope_threshold=1.2, intercept_threshold=200):
+    def detect_lanes(self, lines, slope_threshold=2, intercept_threshold=300):
         slopes, intercepts = self.get_slopes_intercepts(lines)
         lanes = []
         used_lines = set()  # Keep track of lines that have been assigned to a lane
@@ -204,13 +204,13 @@ class ImageSubscriber(Node):
         lines = self.detect_lines(image)
         image = self.draw_lines(image, lines)
         lines = self.line_reduct_v2(lines)
-        plt.imsave("/home/aidan/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         lanes = self.detect_lanes(lines)
         self.get_logger().info(str(len(lanes)))
         closeintercept, closeslope = self.get_lane_center(lanes, self.imgwidth)
         correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
-        self.get_logger().info(correction)
-        #self.desired_heading_publisher.publish(correction + self.heading)
+        self.get_logger().info(str(correction))
+        self.desired_heading_publisher.publish(int(correction + self.heading))
         
         
         # Save the image
