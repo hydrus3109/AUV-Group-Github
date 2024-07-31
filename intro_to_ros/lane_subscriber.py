@@ -6,6 +6,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from std_msgs.msg import Int16
+from mavros_msgs.msg import ManualControl
 import numpy as np
 
 import cv2
@@ -35,6 +36,12 @@ class ImageSubscriber(Node):
         self.desired_heading_publisher = self.create_publisher(
             Int16,
             'bluerov2/desired_heading',
+            10
+        )
+
+        self.move_publisher = self.create_publisher(
+            ManualControl,
+            'bluerov2/manual_control',
             10
         )
 
@@ -172,6 +179,8 @@ class ImageSubscriber(Node):
             x = center_intercept
             return FOV_HOR*(x-img_width/2)/img_width
     
+    def recommend_lateral(self, center_intercept, img_width, offset):
+        return center_intercept - (img_width/2) * offset
     
 
     def image_callback(self, msg: Image):
@@ -189,9 +198,12 @@ class ImageSubscriber(Node):
         lines = self.line_reduct_v2(lines)
         lanes = self.detect_lanes(lines)
         closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
-        correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
-        self.get_logger().info(correction+self.heading)
-        self.desired_heading_publisher.publish(correction + self.heading)
+        correction = self.recommend_lateral(closeintercept, imgwidth, 0.02)
+        self.get_logger().info(correction)
+        movement = ManualControl()
+        movement.y = min(correction, 20)
+        self.get_logger().info(f'\nCurrent Power: {movement.y}')
+        self.move_publisher.publish(movement)
         
         
         # Save the image
