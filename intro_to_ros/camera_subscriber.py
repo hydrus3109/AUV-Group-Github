@@ -119,42 +119,47 @@ class CameraSubscriber(Node):
         if img.any()!=None:
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
             
-            tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
-            
-            if len(tags) > 0:
+            #YOLO STUFF
+            if False or len(results) == 0:
                 self.targetting_fails = 0
-                for tag in tags:
-                    self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
-                    self.y_angle = self.calculate_rel_verticle_angle(img, tag)
-                    self.z_distance = self.calculate_distance(img, tag)
-                    #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
-    
-    
-                    self.message2.data = self.z_distance*1.0
-                    self.distance_publisher.publish(self.message2)
-                    
-                    if (self.heading != None) and (self.x_angle != None):
-                        self.message.data = self.heading + int(self.x_angle)
-                        self.get_logger().info(f"{self.message}")
-                        self.heading_publisher.publish(self.message)
-                     
-                    self.target_msg.data = True
-                    self.targetted_publisher.publish(self.target_msg)
-            else:
-                #YOLO STUFF
-                #if len(results) == 0:
-                if self.targetting_fails > FAIL_THRESHOLD:
-                    self.message.data = int(self.heading)
-                    #self.heading_publisher.publish(self.message)
-                    self.target_msg.data = False
-                    self.targetted_publisher.publish(self.target_msg)
-                else:
-                    self.targetting_fails += 1
-                #else:
-                #    self.targetting_fails = 0
 
+
+
+                self.Done = True     
+            else:     
+                tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
+                
+                if len(tags) > 0:
+                    self.targetting_fails = 0
+                    for tag in tags:
+                        self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
+                        self.y_angle = self.calculate_rel_verticle_angle(img, tag)
+                        self.z_distance = self.calculate_distance(img, tag)
+                        #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
+        
+        
+                        self.message2.data = self.z_distance*1.0
+                        self.distance_publisher.publish(self.message2)
                         
-            self.Done = True              
+                        if (self.heading != None) and (self.x_angle != None):
+                            self.message.data = self.heading + int(self.x_angle)
+                            self.get_logger().info(f"{self.message}")
+                            self.heading_publisher.publish(self.message)
+                        
+                        self.target_msg.data = True
+                        self.targetted_publisher.publish(self.target_msg)
+                        self.Done = True
+                else:
+                    #bruh no target
+                    if self.targetting_fails > FAIL_THRESHOLD:
+                        self.message.data = int(self.heading)
+                        #self.heading_publisher.publish(self.message)
+                        self.target_msg.data = False
+                        self.targetted_publisher.publish(self.target_msg)
+                    else:
+                        self.targetting_fails += 1
+                
+                     
 
 def main(args=None):
     rclpy.init(args=args)

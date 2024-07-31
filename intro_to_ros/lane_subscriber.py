@@ -33,7 +33,7 @@ class ImageSubscriber(Node):
             10
         )
 
-        # subscribe to desired_heading topic which will be based on AUV's angle to april tag(s)
+        # publish a desired_heading based on AUV's angle to april tag(s)
         self.desired_heading_publisher = self.create_publisher(
             Int16,
             'bluerov2/desired_heading',
@@ -179,7 +179,7 @@ class ImageSubscriber(Node):
             return None
         if center_intercept is not None:
             x = center_intercept
-            self.get_logger().info(f"center_intercept:{x}")
+            #self.get_logger().info(f"center_intercept:{x}")
             return FOV_HOR*(x-img_width/2)/img_width
         
     def draw_lines(self, img, lines, color=(0, 255, 0)):
@@ -207,7 +207,7 @@ class ImageSubscriber(Node):
         lines = self.line_reduct_v2(lines)
         
         #image = self.draw_lines(image, lines)
-        self.get_logger().info(f"lines:{len(lines)}")
+        #self.get_logger().info(f"lines:{len(lines)}")
         lanes = self.detect_lanes(lines)
         self.get_logger().info(f"lanes:{len(lanes)}")
         image = self.draw_lanes(image, lanes)

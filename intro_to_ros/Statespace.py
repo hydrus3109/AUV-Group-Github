@@ -8,9 +8,9 @@ import numpy as np
 import time
 
 class State(Enum):
+    PREGAME = auto()
     SCANNING = auto()
-    MOVING = auto()
-    ORBITING = auto()
+    CHASE = auto()
     FLASHING = auto()
 
 class AUVController(Node):
@@ -49,6 +49,13 @@ class AUVController(Node):
             10
         )
 
+        self.desired_heading_subscriber = self.create_subscription(
+            Int16,
+            'bluerov2/desied_heading',
+            self.desired_heading_callback,
+            10
+        )
+
         self.move_publisher = self.create_publisher(                    #Initialize the publisher
             OverrideRCIn, #Type of message that's boreadcasted
             "bluerov2/override_rc", #Topic name
@@ -64,7 +71,7 @@ class AUVController(Node):
             10
         )
         self.start_heading = None
-        self.current_state = State.SCANNING
+        self.current_state = State.PREGAME
         self.current_heading = None
         self.current_depth = None
         self.distance_to_opponent = None
@@ -72,6 +79,7 @@ class AUVController(Node):
         self.retreat_countdown = 60
         self.depth_difference = None
         self.target_found = False
+        self.lines_detected = False
 
     def distance_callback(self, msg):
         if(self.target_found):
@@ -86,10 +94,11 @@ class AUVController(Node):
         pass
         if self.distance_to_opponent < 2: #replace this 
             self.flash()
-        
-        
 
-        
+    def desired_headin
+_callback(self, msg):
+        if (msg.data is not None):
+            self.desired_heading = msg.data        
     def depth_callback(self, msg):
         self.current_depth = msg.relative
 
@@ -104,7 +113,10 @@ class AUVController(Node):
         else:
             self.target_found = False
     def update_state(self):
-        # Update the current state based on sensor data
+
+                    # Update the current state based on sensor data
+        if self.current_state == State.PREGAME:
+            
         if self.current_state == State.SCANNING:
             if self.distance_to_opponent is not None:
                 self.current_state = State.MOVING
@@ -121,10 +133,8 @@ class AUVController(Node):
     def perform_action(self):
         if self.current_state == State.SCANNING:
             self.scan()
-        elif self.current_state == State.MOVING:
+        elif self.current_state == State.CHASE:
             self.move()
-        elif self.current_state == State.ORBITING:
-            self.orbit()
         elif self.current_state == State.FLASHING:
             self.flash()
 
@@ -157,6 +167,15 @@ class AUVController(Node):
         cmd.x = 50  # Move forward
         newheading = Int16()
         newheading.data = self.relative_heading_to_opponent
+        self.desired_heading_publisher.publish(newheading)
+        self.manual_control_publisher.publish(cmd)
+
+    def start_opposite(self, power):
+        # Implement moving behavior towards the opponent
+        cmd = ManualControl()
+        cmd.x = 100  # Move forward
+        newheading = Int16()
+        newheading.data = self.desired_heading
         self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
 
