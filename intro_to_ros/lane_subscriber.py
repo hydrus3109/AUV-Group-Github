@@ -8,6 +8,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from std_msgs.msg import Int16
+from mavros_msgs.msg import ManualControl
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
@@ -42,6 +43,13 @@ class ImageSubscriber(Node):
         self.heading = 0
         self.imgheight = 480
         self.imgwidth = 640
+
+        self.move_publisher = self.create_publisher(
+            ManualControl,
+            'bluerov2/manual_control',
+            10
+        )
+
     def heading_callback(self, msg):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
@@ -188,6 +196,10 @@ class ImageSubscriber(Node):
             cv2.line(img, (x1, y1), (x2, y2), color, 2)
         return img 
         
+    
+    def recommend_lateral(self, center_intercept, img_width, offset):
+        return center_intercept - (img_width/2) * offset
+    
 
     def image_callback(self, msg: Image):
         """
@@ -221,6 +233,17 @@ class ImageSubscriber(Node):
             self.desired_heading_publisher.publish(message)
             
         
+        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
+        correction = self.recommend_lateral(closeintercept, imgwidth, 0.02)
+        self.get_logger().info(correction)
+        movement = ManualControl()
+        movement.y = min(correction, 20)
+        self.get_logger().info(f'\nCurrent Power: {movement.y}')
+        self.move_publisher.publish(movement)
+        
+        
+        # Save the image
+        cv2.imwrite("image.png", image)
 
 
 def main(args=None):
