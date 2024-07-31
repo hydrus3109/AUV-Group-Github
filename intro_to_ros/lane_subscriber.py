@@ -40,29 +40,32 @@ class ImageSubscriber(Node):
             10
         )
         self.heading = 0
+        self.imgheight = 480
+        self.imgwidth = 640
     def heading_callback(self, msg):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
 
 
-    def detect_lines(self,img, threshold1=100, threshold2=200, apertureSize=5, minLineLength= 400, maxLineGap= 50):
+    def detect_lines(self, img, threshold1=100, threshold2=300, apertureSize=5, minLineLength= 50, maxLineGap= 50):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.medianBlur(gray, 15)
         edges = cv2.Canny(gray, threshold1, threshold2, apertureSize=apertureSize)
         plt.imshow(edges)
         lines = cv2.HoughLinesP(
                     edges,
-                    10,
+                    1,
                     np.pi/180,
-                    100,
+                    80,
                     minLineLength=minLineLength,
                     maxLineGap=maxLineGap,
             ) # detect lines
         return lines
-    def line_reduct_v2(self,lines):
+    def line_reduct_v2(self, lines):
         """
         This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
         """
-        margin = 0.05
+        margin = 0.02
         slopes = self.get_slopes_intercepts(lines)[0]
         line_dict = dict()
         for i in range(len(lines)):
@@ -86,7 +89,7 @@ class ImageSubscriber(Node):
             cv2.line(img, (x1, y1), (x2, y2), color, 2)
         return img
 
-    def get_slopes_intercepts(self,lines):
+    def get_slopes_intercepts(self, lines):
         slopes = []
         intercepts = []
         for line in lines:
@@ -94,6 +97,7 @@ class ImageSubscriber(Node):
             if x2 - x1 != 0:  # Avoid division by zero
                 slope = (y2 - y1) / (x2 - x1)
                 intercept = y1 - slope * x1
+                intercept = (self.imgheight - intercept)/slope
             else:
                 slope = None  # Vertical line case
                 intercept = None
@@ -101,7 +105,7 @@ class ImageSubscriber(Node):
             intercepts.append(intercept)
         return slopes, intercepts
 
-    def detect_lanes(self, lines, slope_threshold=0.3, intercept_threshold=1):
+    def detect_lanes(self, lines, slope_threshold=1.2, intercept_threshold=200):
         slopes, intercepts = self.get_slopes_intercepts(lines)
         lanes = []
         used_lines = set()  # Keep track of lines that have been assigned to a lane
@@ -121,7 +125,7 @@ class ImageSubscriber(Node):
                     slope_diff = abs(slopes[i] - slopes[j])
                     intercept_diff = abs(intercepts[i] - intercepts[j])
 
-                    if slope_diff < slope_threshold and intercept_diff > intercept_threshold:
+                    if slope_diff < slope_threshold and intercept_diff < intercept_threshold:
                         if intercept_diff < best_intercept_diff:
                             best_intercept_diff = intercept_diff
                             best_pair = j
@@ -144,7 +148,7 @@ class ImageSubscriber(Node):
 
 
 
-    def get_lane_center(self, lanes, img_width, img_height):
+    def get_lane_center(self, lanes, img_width):
         if not lanes:
             return None, None
         
@@ -160,13 +164,12 @@ class ImageSubscriber(Node):
         for lane in lanes:
             for line in lane:
                 slopes, intercepts = self.get_slopes_intercepts([line])
-                bottom_intercepts = (img_height - intercepts[0]) / slopes
-                distance = abs(img_center_x - bottom_intercepts)
+                distance = abs(img_center_x - intercepts[0])
                 
                 if distance < closest_distance:
                     closest_distance = distance
                     closest_slope = slopes[0]
-                    closest_intercept =bottom_intercepts
+                    closest_intercept =intercepts[0]
 
         return  closest_slope, closest_intercept
 
@@ -179,7 +182,7 @@ class ImageSubscriber(Node):
             return FOV_HOR*(x-img_width/2)/img_width
     def draw_lines(self, img, lines, color=(0, 255, 0)):
         for line in lines:
-            x1, y1, x2, y2 = line
+            x1, y1, x2, y2 = line[0]
             cv2.line(img, (x1, y1), (x2, y2), color, 2)
         return img 
         
@@ -194,17 +197,18 @@ class ImageSubscriber(Node):
         """
         # Convert Image message to OpenCV image
         image = self.cvb.imgmsg_to_cv2(msg)
-        
-        imgwidth = np.shape(image)[1]
-        imgheight = np.shape(image)[0]
+        self.imgwidth = np.shape(image)[1]
+        self.imgheight = np.shape(image)[0]
+        image = image[int(self.imgheight*0.35):self.imgheight, 0:self.imgwidth]
+        self.imgheight =int(self.imgheight - self.imgheight*0.35)
         lines = self.detect_lines(image)
         image = self.draw_lines(image, lines)
         lines = self.line_reduct_v2(lines)
-        #plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
+        plt.imsave("/home/aidan/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         lanes = self.detect_lanes(lines)
         self.get_logger().info(str(len(lanes)))
-        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth, imgheight)
-        correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
+        closeintercept, closeslope = self.get_lane_center(lanes, self.imgwidth)
+        correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
         self.get_logger().info(correction)
         #self.desired_heading_publisher.publish(correction + self.heading)
         

@@ -163,19 +163,11 @@ class AUVController(Node):
     def orbit(self):
         # Implement orbiting behavior around the opponent
         cmd = ManualControl()
-        cmd.y = 100  # Neutral
+        cmd.y = 100  
         newheading = Int16()
         newheading.data = self.relative_heading_to_opponent
         self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
-        if self.depth_difference is not None:
-            newdepth = Altitude
-            newdepth.local = self.depth_difference
-            self.desired_depth_publisher.publish(newdepth)
-        else:
-            newdepth = Altitude
-            newdepth.local = 0.5
-            self.desired_depth_publisher.publish(newdepth)
 
     def turn_on_lights(self, movement):
         """turns on auv lights"""
