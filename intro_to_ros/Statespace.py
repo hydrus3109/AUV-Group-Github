@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Imu, Range
 from mavros_msgs.msg import ManualControl, Altitude, OverrideRCIn
-from std_msgs.msg import Int16, Float32
+from std_msgs.msg import Int16, Float32, Bool
 import numpy as np
 import time
 
@@ -43,7 +43,7 @@ class AUVController(Node):
         )
 
         self.targetted_subscriber = self.create_subscription(
-            bool,
+            Bool,
             'bluerov2/targetted',
             self.targetted_callback,
             10
@@ -163,19 +163,11 @@ class AUVController(Node):
     def orbit(self):
         # Implement orbiting behavior around the opponent
         cmd = ManualControl()
-        cmd.y = 100  # Neutral
+        cmd.y = 100  
         newheading = Int16()
         newheading.data = self.relative_heading_to_opponent
         self.desired_heading_publisher.publish(newheading)
         self.manual_control_publisher.publish(cmd)
-        if self.depth_difference is not None:
-            newdepth = Altitude
-            newdepth.local = self.depth_difference
-            self.desired_depth_publisher.publish(newdepth)
-        else:
-            newdepth = Altitude
-            newdepth.local = 0.5
-            self.desired_depth_publisher.publish(newdepth)
 
     def turn_on_lights(self, movement):
         """turns on auv lights"""

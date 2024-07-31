@@ -31,12 +31,14 @@ setup(
                             'physics = intro_to_ros.physics_sim:main',
                             'armdisarm = intro_to_ros.armdisarm:main',
                             'dance = intro_to_ros.dance:main',
-                            'pressure = intro_to_ros.pressure_to_depth:main',
+                            'pressure_to_depth = intro_to_ros.pressure_to_depth:main',
                             "ros_bluerov2_interface = rosmav.ros_bluerov2_interface:main",
                             "pid_depth = intro_to_ros.pid_depth:main",
                             "pid_heading = intro_to_ros.pid_heading:main",
                             "camera_subscriber = intro_to_ros.camera_subscriber:main",
-                            "flashing_lights = intro_to_ros.flashing_lights:main"
+                            "flashing_lights = intro_to_ros.flashing_lights:main",
+                            "mods = intro_to_ros.MODS:main",
+                            "lane_subscriber = intro_to_ros.lane_subscriber:main"
         ],
     },
 )

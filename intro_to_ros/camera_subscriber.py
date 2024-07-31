@@ -7,6 +7,7 @@
 #colcon build --packages-select intro_to_ros --symlink-install
 #source ~/auvc_ws/install/setup.zsh
 
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/_.yaml
 #ros2 topic list
 #ros2 topic type /your/topic
 #ro2 topic echo /your/topic :)))))
@@ -18,7 +19,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Int16
 from cv_bridge import CvBridge
 import numpy as np
-from std_msgs.msg import Int16, Float32
+from std_msgs.msg import Int16, Float32, Bool
 import cv2
 import matplotlib.pyplot as plt
 from dt_apriltags import Detector
@@ -41,12 +42,12 @@ class CameraSubscriber(Node):
         self.get_logger().info("starting camera subscriber node")
         
         self.heading_subscriber = self.create_subscription(
-            bool,
+            Int16,
             'bluerov2/heading',
             self.heading_callback,
             10
         )
-        self.get_logger().info("starting heading subscriber node")
+        self.get_logger().info("starting heading SUB node")
         
         self.heading_publisher = self.create_publisher(
             Int16,
@@ -55,19 +56,20 @@ class CameraSubscriber(Node):
         )
 
         self.targetted_publisher = self.create_publisher(
-            Int16,
+            Bool,
             "bluerov2/targetted",
             10
         )
 
         self.get_logger().info("starting heading publsiher node")
+        self.get_logger().info("starting heading PUB node")
         
         self.distance_publisher = self.create_publisher(
             Float32,
             "bluerov2/distance",
             10
         )
-        self.get_logger().info("starting heading publsiher node")
+        self.get_logger().info("starting distance PUB node")
         
         self.heading = None
         self.x_angle = None
@@ -81,6 +83,9 @@ class CameraSubscriber(Node):
                             refine_edges=1,
                             decode_sharpening=0.25,
                             debug=0)
+        self.target_msg = Bool()
+        self.message = Int16()
+        self.message2 = Float32()
         self.targetting_fails = 0
         
     def calculate_rel_horizontal_angle(self, img, tag):
@@ -99,12 +104,14 @@ class CameraSubscriber(Node):
         self.heading = msg.data   
         
     def image_callback(self, msg):
+        self.get_logger().info(f"{self.targetting_fails}")
         
-        FAIL_THRESHOLD = 3
+        FAIL_THRESHOLD = 8
 
         if not self.Done:
             return
         self.Done = False
+        
         img = self.bridge.imgmsg_to_cv2(msg)
         
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", img)
@@ -120,23 +127,27 @@ class CameraSubscriber(Node):
                     self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
                     self.y_angle = self.calculate_rel_verticle_angle(img, tag)
                     self.z_distance = self.calculate_distance(img, tag)
-                    self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
-                    message2 = Float32()
-                    message2.data = self.z_distance*1.0
-                    self.distance_publisher.publish(message2)
+                    #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
+    
+    
+                    self.message2.data = self.z_distance*1.0
+                    self.distance_publisher.publish(self.message2)
+                    
                     if (self.heading != None) and (self.x_angle != None):
-                        message = Int16()
-                        message.data = self.heading + int(self.x_angle)
-                        self.heading_publisher.publish(message)
-                    self.targetted_publisher.publish(True)
+                        self.message.data = self.heading + int(self.x_angle)
+                        self.get_logger().info(f"{self.message}")
+                        self.heading_publisher.publish(self.message)
+                     
+                    self.target_msg.data = True
+                    self.targetted_publisher.publish(self.target_msg)
             else:
                 #YOLO STUFF
                 #if len(results) == 0:
                 if self.targetting_fails > FAIL_THRESHOLD:
-                    message = Int16()
-                    message.data = 0
-                    self.heading_publisher.publish(message)
-                    self.targetted_publisher.publish(False)
+                    self.message.data = int(self.heading)
+                    #self.heading_publisher.publish(self.message)
+                    self.target_msg.data = False
+                    self.targetted_publisher.publish(self.target_msg)
                 else:
                     self.targetting_fails += 1
                 #else:

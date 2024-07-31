@@ -56,8 +56,8 @@ class PIDHeadingNode(Node):
         """
         PID CONSTANTS
         """
-        self.kp = 0.2
-        self.kd = .1     
+        self.kp = 2
+        self.kd = 1
         self.min_output = -30.0
         self.max_output = 30.0
         self.previous_error = 0.0
@@ -87,7 +87,7 @@ class PIDHeadingNode(Node):
         output = proportional + (self.kd * self.derivative)
 
         #more tracking
-        self.get_logger().info(f'\n Kp: {proportional} Kd: {self.kd *self.derivative}')
+        self.get_logger().info(f'\n Kp: {proportional} Kd: {self.kd *self.derivative} CurrentHeading: {self.heading}')
         
         #updates/clamping output
         output = max(min(output, self.max_output), self.min_output)
@@ -122,9 +122,10 @@ class PIDHeadingNode(Node):
 
             #publishing movement
             movement = ManualControl()
+
             movement.r = heading_correction
-            # self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
-            # self.move_publisher.publish(movement)
+            self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
+            self.move_publisher.publish(movement)
 
 
 def main(args=None):

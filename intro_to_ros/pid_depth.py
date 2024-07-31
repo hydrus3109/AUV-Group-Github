@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 #~/ardupilot/Tools/autotest/sim_vehicle.py --vehicle=ArduSub --aircraft="bwsibot" -L RATBeach --out=udp:YOUR_COMPUTER_IP:14550
-#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/example.yaml
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/_.yaml
 
 #cd ~/auvc_ws
 #colcon build --symlink-install
