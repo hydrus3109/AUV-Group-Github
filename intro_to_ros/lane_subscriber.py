@@ -99,8 +99,8 @@ class ImageSubscriber(Node):
                 intercept = y1 - slope * x1
                 intercept = (self.imgheight - intercept)/slope
             else:
-                slope = None  # Vertical line case
-                intercept = None
+                slope = np.inf # Vertical line case
+                intercept = x1
             slopes.append(slope)
             intercepts.append(intercept)
         return slopes, intercepts
@@ -176,10 +176,12 @@ class ImageSubscriber(Node):
     def recommend_direction(self, center_intercept, slope, img_width):
         FOV_HOR = 80
         if center_intercept is None or slope is None:
-            return "unknown"
+            return None
         if center_intercept is not None:
             x = center_intercept
+            self.get_logger().info(f"center_intercept:{x}")
             return FOV_HOR*(x-img_width/2)/img_width
+        
     def draw_lines(self, img, lines, color=(0, 255, 0)):
         for line in lines:
             x1, y1, x2, y2 = line[0]
@@ -202,19 +204,23 @@ class ImageSubscriber(Node):
         image = image[int(self.imgheight*0.35):self.imgheight, 0:self.imgwidth]
         self.imgheight =int(self.imgheight - self.imgheight*0.35)
         lines = self.detect_lines(image)
-        image = self.draw_lines(image, lines)
         lines = self.line_reduct_v2(lines)
-        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
+        
+        #image = self.draw_lines(image, lines)
+        self.get_logger().info(f"lines:{len(lines)}")
         lanes = self.detect_lanes(lines)
-        self.get_logger().info(str(len(lanes)))
-        closeintercept, closeslope = self.get_lane_center(lanes, self.imgwidth)
+        self.get_logger().info(f"lanes:{len(lanes)}")
+        image = self.draw_lanes(image, lanes)
+        closeslope, closeintercept = self.get_lane_center(lanes, self.imgwidth)
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
-        self.get_logger().info(str(correction))
-        self.desired_heading_publisher.publish(int(correction + self.heading))
+        if correction is not None:
+            message = Int16()
+            message.data = int(correction +self.heading)
+            self.get_logger().info(f"correction: {correction}")
+            self.desired_heading_publisher.publish(message)
+            
         
-        
-        # Save the image
-        cv2.imwrite("image.png", image)
 
 
 def main(args=None):
@@ -236,11 +242,3 @@ if __name__ == "__main__":
 
 
 
-
-"""
-def draw_lines(img, lines, color=(0, 255, 0)):
-    for line in lines:
-        x1, y1, x2, y2 = line
-        cv2.line(img, (x1, y1), (x2, y2), color, 2)
-    return img
-"""
