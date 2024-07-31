@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/_.yaml
+
 # import necessary libraries
 import rclpy
 from rclpy.node import Node
@@ -7,8 +9,8 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from std_msgs.msg import Int16
 import numpy as np
-
 import cv2
+import matplotlib.pyplot as plt
 
 # create image subscriber class
 class ImageSubscriber(Node):
@@ -37,12 +39,12 @@ class ImageSubscriber(Node):
             'bluerov2/desired_heading',
             10
         )
-
+        self.heading = 0
     def heading_callback(self, msg):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
 
-    def detect_lines(self, img, threshold1=100, threshold2=150, apertureSize=5, minLineLength=300, maxLineGap= 40):
+    def detect_lines(self, img, threshold1=50, threshold2=150, apertureSize=3, minLineLength=100, maxLineGap= 50):
         """
         This method detects all straight edges in an image using a Probabilistic Hough Transform
         """
@@ -50,11 +52,12 @@ class ImageSubscriber(Node):
         # convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+        blur = cv2.blur(img,(5,5))
         # Canny algorithm implements voting procedure to detect edges (boundaries) in an image
         edges = cv2.Canny(gray, threshold1, threshold2, apertureSize=apertureSize)
-        
         # Detect and return list of lines detected
-        lines = cv2.HoughLinesP(edges, 10, np.pi/180, 100, minLineLength, maxLineGap)
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", edges)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, 100, minLineLength, maxLineGap)
         if lines is not None:
             lines = [line[0] for line in lines]  # Extract the actual coordinates of the lines
         else:
@@ -79,11 +82,11 @@ class ImageSubscriber(Node):
             intercepts.append(intercept)
         return slopes, intercepts
     
-    def line_reduct_v2(self, lines, slope_margin):
+    def line_reduct_v2(self, lines):
         """
         This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
         """
-        margin = slope_margin
+        margin = 0.1
         slopes = self.get_slopes_intercepts(lines)[0]
         line_dict = dict()
         for i in range(len(lines)):
@@ -171,8 +174,12 @@ class ImageSubscriber(Node):
         if center_intercept is not None:
             x = center_intercept
             return FOV_HOR*(x-img_width/2)/img_width
-    
-    
+    def draw_lines(self, img, lines, color=(0, 255, 0)):
+        for line in lines:
+            x1, y1, x2, y2 = line
+            cv2.line(img, (x1, y1), (x2, y2), color, 2)
+        return img 
+        
 
     def image_callback(self, msg: Image):
         """
@@ -184,14 +191,18 @@ class ImageSubscriber(Node):
         """
         # Convert Image message to OpenCV image
         image = self.cvb.imgmsg_to_cv2(msg)
+        
         imgwidth = np.shape(image)[1]
         lines = self.detect_lines(image)
+        image = self.draw_lines(image, lines)
         lines = self.line_reduct_v2(lines)
+        #plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
         lanes = self.detect_lanes(lines)
-        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
+        self.get_logger().info(str(len(lanes)))
+        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth)
         correction = self.recommend_direction(closeintercept, closeslope, imgwidth)
-        self.get_logger().info(correction+self.heading)
-        self.desired_heading_publisher.publish(correction + self.heading)
+        self.get_logger().info(correction)
+        #self.desired_heading_publisher.publish(correction + self.heading)
         
         
         # Save the image

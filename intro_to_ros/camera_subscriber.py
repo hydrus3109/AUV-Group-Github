@@ -7,6 +7,7 @@
 #colcon build --packages-select intro_to_ros --symlink-install
 #source ~/auvc_ws/install/setup.zsh
 
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/_.yaml
 #ros2 topic list
 #ros2 topic type /your/topic
 #ro2 topic echo /your/topic :)))))
@@ -105,7 +106,7 @@ class CameraSubscriber(Node):
     def image_callback(self, msg):
         self.get_logger().info(f"{self.targetting_fails}")
         
-        FAIL_THRESHOLD = 3
+        FAIL_THRESHOLD = 8
 
         if not self.Done:
             return
@@ -126,7 +127,7 @@ class CameraSubscriber(Node):
                     self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
                     self.y_angle = self.calculate_rel_verticle_angle(img, tag)
                     self.z_distance = self.calculate_distance(img, tag)
-                    self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
+                    #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
     
     
                     self.message2.data = self.z_distance*1.0
@@ -134,16 +135,17 @@ class CameraSubscriber(Node):
                     
                     if (self.heading != None) and (self.x_angle != None):
                         self.message.data = self.heading + int(self.x_angle)
+                        self.get_logger().info(f"{self.message}")
                         self.heading_publisher.publish(self.message)
-                    
+                     
                     self.target_msg.data = True
                     self.targetted_publisher.publish(self.target_msg)
             else:
                 #YOLO STUFF
                 #if len(results) == 0:
                 if self.targetting_fails > FAIL_THRESHOLD:
-                    self.message.data = self.heading
-                    self.heading_publisher.publish(self.message)
+                    self.message.data = int(self.heading)
+                    #self.heading_publisher.publish(self.message)
                     self.target_msg.data = False
                     self.targetted_publisher.publish(self.target_msg)
                 else:

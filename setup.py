@@ -37,6 +37,7 @@ setup(
                             "pid_heading = intro_to_ros.pid_heading:main",
                             "camera_subscriber = intro_to_ros.camera_subscriber:main",
                             "flashing_lights = intro_to_ros.flashing_lights:main",
+                            "mods = intro_to_ros.MODS:main",
                             "lane_subscriber = intro_to_ros.lane_subscriber:main"
         ],
     },
