@@ -63,7 +63,7 @@ class ImageSubscriber(Node):
         This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
         """
         margin = 0.05
-        slopes = get_slopes_intercepts(lines)[0]
+        slopes = self.get_slopes_intercepts(lines)[0]
         line_dict = dict()
         for i in range(len(lines)):
             line_dict.update({slopes[i]:lines[i]})
