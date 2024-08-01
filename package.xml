@@ -16,6 +16,7 @@
   <!-- <build_depend>matplotlib</build_depend> -->
   <build_depend>nav_msgs</build_depend>
   <build_depend>ament_cmake_python</build_depend>
+  <build_depend>ultralytics</build_depend>
 
   <build_export_depend>mavros</build_export_depend>
   <build_export_depend>mavros_msgs</build_export_depend>
@@ -27,7 +28,7 @@
   <exec_depend>rclpy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
-
+  <exec_depend>ultralytics</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
