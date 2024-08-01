@@ -12,11 +12,11 @@ launch:
     name: "bluerov2_camera_interface"
     namespace: ""
 
-# - node:
-#     pkg: "intro_to_ros"
-#     exec: "armdisarm"
-#     name: "arm"
-#     namespace: ""
+- node:
+    pkg: "intro_to_ros"
+    exec: "armdisarm"
+    name: "arm"
+    namespace: ""
 
 - node:
     pkg: "intro_to_ros"
@@ -34,4 +34,16 @@ launch:
     pkg: "intro_to_ros"
     exec: "pid_heading"
     name: "pid_heading"
+    namespace: ""
+
+- node:
+    pkg: "intro_to_ros"
+    exec: "lane_subscriber"
+    name: "lane_subscriber"
+    namespace: ""
+
+- node:
+    pkg: "intro_to_ros"
+    exec: "testitall"
+    name: "testitall"
     namespace: ""

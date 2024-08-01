@@ -37,19 +37,19 @@ class ImageSubscriber(Node):
         # publish a desired_heading based on AUV's angle to april tag(s)
         self.desired_heading_publisher = self.create_publisher(
             Int16,
-            'bluerov2/desired_heading',
+            'ld/desired_heading_LANE',
             10
         )
 
         self.lateral_offset_publisher = self.create_publisher(
             Float32,
-            'bluerov2/lateral_offset',
+            'ld/lateral_offset',
             10
         )
 
         self.more_lanes_publisher = self.create_publisher(
             Bool,
-            'bluerov2/more_lanes'
+            'ld/more_lanes'
         )
 
         self.heading = 0
@@ -67,7 +67,6 @@ class ImageSubscriber(Node):
         """This method logs and stores int16 heading from subscriber"""
         self.heading = msg.data
 
-
     def detect_lines(self, img, threshold1=100, threshold2=300, apertureSize=5, minLineLength= 50, maxLineGap= 50):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         gray = cv2.medianBlur(gray, 15)
@@ -82,6 +81,7 @@ class ImageSubscriber(Node):
                     maxLineGap=maxLineGap,
             ) # detect lines
         return lines
+        
     def line_reduct_v2(self, lines):
         """
         This method sorts the slopes and deletes all duplicate lines detected by the Probabilistic Hough Transform
@@ -194,6 +194,36 @@ class ImageSubscriber(Node):
 
         return  closest_slope, closest_intercept
 
+    def get_specific_lane_center(self, lanes, image_width, left_lane:bool):
+        #Set left_lane true it you want to detect leftmost lane, otherwise set it to false if you want to do rightmost lane
+        if not lanes:
+            return None, None
+        
+        # Initialize the closest lane variables
+        closest_distance = float('inf')
+        closest_intercept = None
+        closest_slope = None
+
+        # Image center
+        if(left_lane):
+            img_center_x = 0
+        else:
+            image_width
+
+        # Compute center of each lane and find the closest
+        for lane in lanes:
+            for line in lane:
+                slopes, intercepts = self.get_slopes_intercepts([line])
+                distance = abs(img_center_x - intercepts[0])
+                
+                if distance < closest_distance:
+                    closest_distance = distance
+                    closest_slope = slopes[0]
+                    closest_intercept =intercepts[0]
+
+        return  closest_slope, closest_intercept
+
+
     def recommend_direction(self, center_intercept, slope, img_width):
         FOV_HOR = 80
         if center_intercept is None or slope is None:
@@ -209,10 +239,8 @@ class ImageSubscriber(Node):
             cv2.line(img, (x1, y1), (x2, y2), color, 2)
         return img 
         
-    
     def recommend_lateral(self, center_intercept, img_width, offset):
-        return center_intercept - (img_width/2) * offset
-    
+        return (center_intercept - (img_width/2)) * offset
 
     def image_callback(self, msg: Image):
         """
@@ -239,20 +267,21 @@ class ImageSubscriber(Node):
         image = self.draw_lanes(image, lanes)
         closeslope, closeintercept = self.get_lane_center(lanes, self.imgwidth)
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
-        correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
+        # correction = self.recommend_direction(closeintercept, closeslope, self.imgwidth)
         
+        # if correction is not None:
+        #     message = Int16()
+        #     message.data = int(correction +self.heading)
+        #     self.get_logger().info(f"correction: {correction}")
+        #     self.desired_heading_publisher.publish(message)
+        
+        closeintercept, closeslope = self.get_specific_lane_center(lanes, self.img_width, True)
+        correction = self.recommend_lateral(closeintercept, self.imgwidth, 0.02)
         if correction is not None:
-            message = Int16()
-            message.data = int(correction +self.heading)
-            self.get_logger().info(f"correction: {correction}")
-            self.desired_heading_publisher.publish(message)
-            
-        
-        closeintercept, closeslope = self.get_lane_center(lanes, imgwidth )
-        correction = self.recommend_lateral(closeintercept, imgwidth, 0.02)
-
-        self.get_logger().info(correction)
-        self.lateral_offset_publisher.publish(correction)
+            self.get_logger().info(f"lateral correction")
+            cmd = Float32()
+            cmd.data = correction
+            self.lateral_offset_publisher.publish(cmd)
         
         message2 = Bool()
         message2.data = self.no_lane_found <= 5

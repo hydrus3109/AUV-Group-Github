@@ -49,15 +49,15 @@ class CameraSubscriber(Node):
         )
         self.get_logger().info("starting heading SUB node")
         
-        self.heading_publisher = self.create_publisher(
+        self.IMG_heading_publisher = self.create_publisher(
             Int16,
-            "bluerov2/desired_heading",
+            "img/desired_heading",
             10
         )
-
+    
         self.targetted_publisher = self.create_publisher(
             Bool,
-            "bluerov2/targetted",
+            "img/targetted",
             10
         )
 
@@ -66,7 +66,7 @@ class CameraSubscriber(Node):
         
         self.distance_publisher = self.create_publisher(
             Float32,
-            "bluerov2/distance",
+            "img/distance",
             10
         )
         self.get_logger().info("starting distance PUB node")
@@ -84,8 +84,9 @@ class CameraSubscriber(Node):
                             decode_sharpening=0.25,
                             debug=0)
         self.target_msg = Bool()
-        self.message = Int16()
-        self.message2 = Float32()
+        self.AT_heading_message = Int16()
+        self.AT_distance_message = Float32()
+        self.YOLO_heading_message = Int16()
         self.targetting_fails = 0
         
     def calculate_rel_horizontal_angle(self, img, tag):
@@ -102,64 +103,63 @@ class CameraSubscriber(Node):
     def heading_callback(self, msg):
         """logs and stores int16 heading from subscriber"""
         self.heading = msg.data   
-        
+    
+    #publish all apriltag stuff
+    def send_april_tags(self, img, tags):
+        for tag in tags:
+            self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
+            self.y_angle = self.calculate_rel_verticle_angle(img, tag)
+            self.z_distance = self.calculate_distance(img, tag)
+            #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
+
+            self.distance_message.data = self.z_distance*1.0
+            self.distance_publisher.publish(self.distance_message)
+            
+            if (self.heading != None) and (self.x_angle != None):
+                self.AT_heading_message.data = self.heading + int(self.x_angle)
+                self.get_logger().info(f"{self.AT_heading_message}")
+                self.IMG_heading_publisher.publish(self.AT_heading_message)
+            
+            self.target_msg.data = True
+            self.targetted_publisher.publish(self.target_msg)
+            self.Done = True            
+    
     def image_callback(self, msg):
-        
-        
         self.get_logger().info(f"{self.targetting_fails}")
         
         FAIL_THRESHOLD = 8
-
         if not self.Done:
             return
         self.Done = False
         
         img = self.bridge.imgmsg_to_cv2(msg)
-        
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", img)
         
         if img.any()!=None:
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
             
             #YOLO STUFF
-            if False or len(results) != 0: #Yolo found
+            if False or len(yolo_results) != 0: #Yolo found
                 self.targetting_fails = 0
-
-
-
-                self.Done = True     
-            else:     #Yolo not found
+                self.Done = True  
+                #check april tags   
                 tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
                 
                 if len(tags) > 0:   #April tag found
                     self.targetting_fails = 0
-                    for tag in tags:
-                        self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
-                        self.y_angle = self.calculate_rel_verticle_angle(img, tag)
-                        self.z_distance = self.calculate_distance(img, tag)
-                        #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
-        
-        
-                        self.message2.data = self.z_distance*1.0
-                        self.distance_publisher.publish(self.message2)
-                        
-                        if (self.heading != None) and (self.x_angle != None):
-                            self.message.data = self.heading + int(self.x_angle)
-                            self.get_logger().info(f"{self.message}")
-                            self.heading_publisher.publish(self.message)
-                        
-                        self.target_msg.data = True
-                        self.targetted_publisher.publish(self.target_msg)
-                        self.Done = True
-                else: #April tag and YOLO not found
-                    if self.targetting_fails > FAIL_THRESHOLD:
-                        self.message.data = int(self.heading)
-                        #self.heading_publisher.publish(self.message)
-                        self.target_msg.data = False
-                        self.targetted_publisher.publish(self.target_msg)
-                    else:  #It didn't fail enough, add targetting fails
-                        self.targetting_fails += 1
+                    self.send_april_tags(img, tags)
+                    self.target_heading_publisher.publish(self.message)
                 
+                return
+                
+            if self.targetting_fails > FAIL_THRESHOLD: #Yolo and April Tags not found
+                self.message.data = int(self.heading)
+                #self.heading_publisher.publish(self.message)
+                self.target_msg.data = False
+                self.targetted_publisher.publish(self.target_msg)
+                
+            else:  #It didn't fail enough, add targetting fails
+                self.targetting_fails += 1               
                      
 
 def main(args=None):

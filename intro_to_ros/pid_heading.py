@@ -43,7 +43,7 @@ class PIDHeadingNode(Node):
 
         self.desired_heading_subscriber = self.create_subscription(
             Int16,
-            'bluerov2/desired_heading',
+            'PID/desired_heading',
             self.desired_heading_callback,
             10
         )
