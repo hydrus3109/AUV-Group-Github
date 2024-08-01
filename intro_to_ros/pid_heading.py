@@ -139,7 +139,7 @@ def main(args=None):
         x = np.arange(0,len(move_node.array))
 
         plt.plot(x,move_node.array)
-        plt.savefig("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/heading_err.png")
+        plt.savefig("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/heading_err.png")
         
         move_node.destroy_node()
         if rclpy.ok():

@@ -7,8 +7,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-intro_to_ros/pigpio-master/
-
 # C extensions
 *.so
 

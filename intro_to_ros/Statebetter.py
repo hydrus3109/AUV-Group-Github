@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+
+#cd ~/auvc_ws
+#colcon build --symlink-install
+#source ~/auvc_ws/install/setup.zsh
+
+#ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/testitall.yaml
+#ros2 run intro_to_ros exec
+
+#ros2 topic pub bluerov2/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
+#ros2 topic pub bluerov2/desired_heading std_msgs/msg/Int16 "{data: 3}" 
+#ros2 topic echo /your/topic 
+
 from enum import Enum, auto
 import rclpy
 from rclpy.node import Node

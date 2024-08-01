@@ -133,7 +133,7 @@ class CameraSubscriber(Node):
         self.Done = False
         
         img = self.bridge.imgmsg_to_cv2(msg)
-        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", img)
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
         
         if img.any()!=None:
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
