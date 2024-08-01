@@ -1,0 +1,46 @@
+   
+    # def image_callback(self, msg):
+    #     self.get_logger().info(f"Targetting fails: {self.targetting_fails}")
+        
+    #     FAIL_THRESHOLD = 8
+    #     if not self.Done:
+    #         return
+    #     self.Done = False
+        
+    #     img = self.bridge.imgmsg_to_cv2(msg)
+    #     plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
+        
+    #     if img.any()!=None:
+    #         frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
+    #         self.get_logger().info(f"target fails: {self.targetting_fails}")
+            
+    #         #YOLO STUFF
+
+    #         tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
+    #         self.get_logger().info("Checking AT")
+    #         self.get_logger().info(f"tags: {tags}")
+    #         if len(tags) > 0:   #April tag found
+    #             self.get_logger().info("FOUND AT")
+    #             self.targetting_fails = 0
+    #             self.send_april_tags(img, tags)
+                
+    #             self.target_msg = Bool()
+    #             self.target_msg.data = True
+    #             self.targetted_publisher.publish(self.target_msg)
+    #             self.get_logger().info(f"CAM SUB: {self.target_msg.data}")
+    #             return
+    #         else:
+    #             self.targetting_fails += 1
+                
+    #         if self.targetting_fails > FAIL_THRESHOLD: #Yolo and April Tags not found
+    #             self.AT_heading_message.data = self.heading
+    #             self.get_logger().info(f"{self.AT_heading_message}")
+    #             self.IMG_heading_publisher.publish(self.AT_heading_message)
+    #             #self.heading_publisher.publish(self.message)
+    #             self.target_msg.data = False
+    #             self.targetted_publisher.publish(self.target_msg)
+                
+    #         else:  #It didn't fail enough, add targetting fails
+    #             self.targetting_fails += 1               
+        
+    #     self.Done = True 

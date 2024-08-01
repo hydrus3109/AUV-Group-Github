@@ -93,7 +93,7 @@ class PIDdepthNode(Node):
         #p and summing errors
         proportional = self.kp * error
         output = proportional + (self.ki * self.integral) + (self.kd * derivative)
-        self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *derivative}')
+        # self.get_logger().info(f'\n Kp: {proportional} Ki: {self.ki * self.integral} Kd: {self.kd *derivative}')
         #updating error and clamping outputs
         output = max(min(output, self.max_output), self.min_output)
         self.previous_error = error
@@ -103,24 +103,28 @@ class PIDdepthNode(Node):
         """gets timestamp in secs and nanosecs from subscriber as well as depth in meters"""
         self.depth = msg.relative
         self.timestamp = msg.header.stamp.sec + 1e-09*msg.header.stamp.nanosec
+        # self.get_logger().info("DLKFSJFS:DFKJF")
         if self.prev_time != None and self.desired_depth != None:
             self.calc_publish_vertical()
         self.prev_time = self.timestamp
-        #self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
+        # self.get_logger().info(f'Depth: {self.depth}, Timestamp: {self.timestamp}')
 
 
     def desired_depth_callback(self, msg):
         """gets desired depth in m from subscriber"""
-        self.desired_depth = msg.relative
+        self.desired_depth = msg.relative        
         
     def calc_publish_vertical(self):
         """publishes vertical movement based on desired depth and ouput from pid"""
         #checking if depth has been recieved and a dt has been produced
+        #self.get_logger().info("DEPTH")
+        
         if self.depth is not None and self.timestamp - self.prev_time > 0:
             depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
             movement = ManualControl()
             movement.z = depth_correction
-            self.get_logger().info(f'\nCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
+            # self.get_logger().info(f'\n DEPTHHHHCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
+            
             self.move_publisher.publish(movement)
 
 

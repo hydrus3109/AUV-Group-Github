@@ -49,7 +49,8 @@ class ImageSubscriber(Node):
 
         self.more_lanes_publisher = self.create_publisher(
             Bool,
-            'ld/more_lanes'
+            'ld/more_lanes',
+            10
         )
 
         self.heading = 0
@@ -117,8 +118,9 @@ class ImageSubscriber(Node):
             x1, y1, x2, y2 = line[0]
             if x2 - x1 != 0:  # Avoid division by zero
                 slope = (y2 - y1) / (x2 - x1)
-                intercept = y1 - slope * x1
-                intercept = (self.imgheight - intercept)/slope
+                if slope != 0:
+                    intercept = y1 - slope * x1
+                    intercept = (self.imgheight - intercept)/slope
             else:
                 slope = np.inf # Vertical line case
                 intercept = x1
@@ -208,7 +210,7 @@ class ImageSubscriber(Node):
         if(left_lane):
             img_center_x = 0
         else:
-            image_width
+            img_center_x = image_width
 
         # Compute center of each lane and find the closest
         for lane in lanes:
@@ -251,7 +253,9 @@ class ImageSubscriber(Node):
             msg (Image): The image message
         """
         # Convert Image message to OpenCV image
+        
         image = self.cvb.imgmsg_to_cv2(msg)
+        
         self.imgwidth = np.shape(image)[1]
         self.imgheight = np.shape(image)[0]
         image = image[int(self.imgheight*0.35):self.imgheight, 0:self.imgwidth]
@@ -263,7 +267,7 @@ class ImageSubscriber(Node):
         #self.get_logger().info(f"lines:{len(lines)}")
         lanes = self.detect_lanes(lines)
 
-        self.get_logger().info(f"lanes:{len(lanes)}")
+        # self.get_logger().info(f"lanes:{len(lanes)}")
         image = self.draw_lanes(image, lanes)
         closeslope, closeintercept = self.get_lane_center(lanes, self.imgwidth)
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/Camera_feed.png", image)
@@ -275,17 +279,19 @@ class ImageSubscriber(Node):
         #     self.get_logger().info(f"correction: {correction}")
         #     self.desired_heading_publisher.publish(message)
         
-        closeintercept, closeslope = self.get_specific_lane_center(lanes, self.img_width, True)
-        correction = self.recommend_lateral(closeintercept, self.imgwidth, 0.02)
-        if correction is not None:
-            self.get_logger().info(f"lateral correction")
-            cmd = Float32()
-            cmd.data = correction
-            self.lateral_offset_publisher.publish(cmd)
+        #closeslope, closeintercept = self.get_specific_lane_center(lanes, self.imgwidth, False)
+        if closeintercept is not None:
+            correction = self.recommend_lateral(closeintercept, self.imgwidth, 0.02)
+            if correction is not None:
+                # self.get_logger().info(f"lateral correction: {correction}")
+                cmd = Float32()
+                cmd.data = correction
+                self.lateral_offset_publisher.publish(cmd)
         
         message2 = Bool()
         message2.data = self.no_lane_found <= 5
         self.more_lanes_publisher.publish(message2)
+
         # Save the image
         cv2.imwrite("image.png", image)
 

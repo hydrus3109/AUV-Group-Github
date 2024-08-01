@@ -23,7 +23,8 @@ from std_msgs.msg import Int16, Float32, Bool
 import cv2
 import matplotlib.pyplot as plt
 from dt_apriltags import Detector
-import time
+from time import sleep
+#from ultralytics import YOLO
 
 FOV_HOR = 80 
 FOV_VER = 64 
@@ -86,8 +87,7 @@ class CameraSubscriber(Node):
         self.target_msg = Bool()
         self.AT_heading_message = Int16()
         self.AT_distance_message = Float32()
-        self.YOLO_heading_message = Int16()
-        self.targetting_fails = 0
+        self.targetting_fails = 0   
         
     def calculate_rel_horizontal_angle(self, img, tag):
         x = tag.center[0]
@@ -111,56 +111,78 @@ class CameraSubscriber(Node):
             self.y_angle = self.calculate_rel_verticle_angle(img, tag)
             self.z_distance = self.calculate_distance(img, tag)
             #self.get_logger().info(f"X Angle: {self.x_angle}, Y Angle: {self.y_angle}, Z Distance: {self.z_distance}")
-
-            self.distance_message.data = self.z_distance*1.0
-            self.distance_publisher.publish(self.distance_message)
+            
+            self.AT_distance_message.data = self.z_distance*1.0
+            self.distance_publisher.publish(self.AT_distance_message)
             
             if (self.heading != None) and (self.x_angle != None):
                 self.AT_heading_message.data = self.heading + int(self.x_angle)
-                self.get_logger().info(f"{self.AT_heading_message}")
+                # self.get_logger().info(f"relative heading: {int(self.x_angle)}")
                 self.IMG_heading_publisher.publish(self.AT_heading_message)
-            
-            self.target_msg.data = True
-            self.targetted_publisher.publish(self.target_msg)
-            self.Done = True            
-    
-    def image_callback(self, msg):
-        self.get_logger().info(f"{self.targetting_fails}")
-        
-        FAIL_THRESHOLD = 8
-        if not self.Done:
+     
+
+    def image_callback(self,msg):
+        if(not self.Done):
             return
         self.Done = False
         
         img = self.bridge.imgmsg_to_cv2(msg)
+        
         plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
         
+        imgwidth = np.shape(img)[1]
+        imgheight = np.shape(img)[0]
+        # img = img[int(imgheight*0.20):imgheight, 0:imgwidth]
         if img.any()!=None:
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
+
+            tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
             
-            #YOLO STUFF
-            if False or len(yolo_results) != 0: #Yolo found
-                self.targetting_fails = 0
-                self.Done = True  
-                #check april tags   
-                tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
+            # self.get_logger().info("Checking AT")
+            # self.get_logger().info(f"tags that were found: {tags}")
+            
+            if len(tags) > 0:   #April tag found
+                # self.get_logger().info("FOUND AT")
+                self.send_april_tags(img, tags)
                 
-                if len(tags) > 0:   #April tag found
-                    self.targetting_fails = 0
-                    self.send_april_tags(img, tags)
-                    self.target_heading_publisher.publish(self.message)
-                
-                return
-                
-            if self.targetting_fails > FAIL_THRESHOLD: #Yolo and April Tags not found
-                self.message.data = int(self.heading)
-                #self.heading_publisher.publish(self.message)
-                self.target_msg.data = False
+                self.target_msg = Bool()
+                self.target_msg.data = True
                 self.targetted_publisher.publish(self.target_msg)
                 
-            else:  #It didn't fail enough, add targetting fails
-                self.targetting_fails += 1               
-                     
+                sleep(0.5)
+            else:
+                self.target_msg = Bool()
+                self.target_msg.data = False
+                self.targetted_publisher.publish(self.target_msg)
+                pass
+                # self.get_logger().("Did not find AT")
+                
+                # model = YOLO("best.pt")  # load a pretrained model (recommended for training)
+                # image = self.bridge.imgmsg_to_cv2(msg)
+                
+                # imgwidth = np.shape(image)[1]
+                # imgheight = np.shape(image)[0]
+                # image = image[int(imgheight*0.35):imgheight, 0:imgwidth]
+                
+                # results = model(image)  # return a list of Results objects
+                # if(len(results) != 0):    
+                #     boxes = results[0].boxes
+                #     x1 = boxes.xyxy
+                #     self.get_logger().info(x1)
+                #     annotated_frame = results[0].plot()
+                #     plt.imshow(annotated_frame)
+                    
+                #     self.target_msg = Bool()
+                #     self.target_msg.data = True
+                #     self.targetted_publisher.publish(self.target_msg)
+                #     sleep(0.5)
+                # else:
+                #     #nothing found ur cooked buddy
+                #     self.target_msg = Bool()
+                #     self.target_msg.data = False
+                #     self.targetted_publisher.publish(self.target_msg)
+        self.Done = True
+        
 
 def main(args=None):
     rclpy.init(args=args)

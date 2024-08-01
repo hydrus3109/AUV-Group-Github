@@ -44,6 +44,13 @@ launch:
 
 - node:
     pkg: "intro_to_ros"
+    exec: "camera_subscriber"
+    name: "camera_subscriber"
+    namespace: ""
+
+
+- node:
+    pkg: "intro_to_ros"
     exec: "testitall"
     name: "testitall"
     namespace: ""
