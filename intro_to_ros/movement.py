@@ -7,8 +7,8 @@
 #ros2 launch /home/kenayosh/auvc_ws/src/AUV-Group-Github/launch/testitall.yaml
 #ros2 run intro_to_ros exec
 
-#ros2 topic pub bluerov2/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
-#ros2 topic pub img/desired_heading std_msgs/msg/Int16 "{data: 3}" 
+#ros2 topic pub PID/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
+#ros2 topic pub PID/desired_heading std_msgs/msg/Int16 "{data: 3}" 
 #ros2 topic echo /your/topic 
 #ros2 topic pub img/targetted std_msgs/msg/Bool "{data: True}"
 
@@ -25,7 +25,7 @@ class State(Enum):
     CHASE = auto()
 
 class Movement(Node):
-    MIN_DEPTH = 0.3                          #Minimum depth we can dive
+    MIN_DEPTH = 0.4                          #Minimum depth we can dive
     MAX_DEPTH = 0.8                           #Maximum depth we can dive
     MIN_DISTANCE_TO_OPPONENT = 1                #Distance to opponent before we can shoot
     START_HEADING = 90
@@ -82,6 +82,9 @@ class Movement(Node):
         if (self.scan_counter <= 10):
             movement = ManualControl()
             movement.x = 20.0
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         
         desired_depth = Altitude()
@@ -98,6 +101,9 @@ class Movement(Node):
         if (self.scan_counter > 10):
             movement = ManualControl()
             movement.x = 0.0001
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         
             if self.scan_counter > 50:
@@ -114,6 +120,9 @@ class Movement(Node):
             # Moving behavior towards the opponent
             movement = ManualControl()
             movement.x = 30.0  # Move forward
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         # else:
         #     newheading = Int16()

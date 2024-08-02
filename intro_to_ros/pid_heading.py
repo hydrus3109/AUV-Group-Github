@@ -122,7 +122,9 @@ class PIDHeadingNode(Node):
 
             #publishing movement
             movement = ManualControl()
-
+            movement.x = np.inf
+            movement.y = np.inf
+            movement.z = np.inf
             movement.r = heading_correction
             #self.get_logger().info(f'\nCurrent Power: {heading_correction}/100\nHeading: {self.heading}')
             self.move_publisher.publish(movement)

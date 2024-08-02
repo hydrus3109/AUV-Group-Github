@@ -155,32 +155,7 @@ class CameraSubscriber(Node):
                 self.AT_heading_message.data = None
                 self.IMG_heading_publisher.publish(self.AT_heading_message)
                 pass
-                # self.get_logger().("Did not find AT")
                 
-                # model = YOLO("best.pt")  # load a pretrained model (recommended for training)
-                # image = self.bridge.imgmsg_to_cv2(msg)
-                
-                # imgwidth = np.shape(image)[1]
-                # imgheight = np.shape(image)[0]
-                # image = image[int(imgheight*0.35):imgheight, 0:imgwidth]
-                
-                # results = model(image)  # return a list of Results objects
-                # if(len(results) != 0):    
-                #     boxes = results[0].boxes
-                #     x1 = boxes.xyxy
-                #     self.get_logger().info(x1)
-                #     annotated_frame = results[0].plot()
-                #     plt.imshow(annotated_frame)
-                    
-                #     self.target_msg = Bool()
-                #     self.target_msg.data = True
-                #     self.targetted_publisher.publish(self.target_msg)
-                #     sleep(0.5)
-                # else:
-                #     #nothing found ur cooked buddy
-                #     self.target_msg = Bool()
-                #     self.target_msg.data = False
-                #     self.targetted_publisher.publish(self.target_msg)
         self.Done = True
         
 

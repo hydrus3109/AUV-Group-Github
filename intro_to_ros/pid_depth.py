@@ -11,7 +11,7 @@
 #ros2 topic type /your/topic
 #ro2 topic echo /your/topic :)))))
 #ros2  interface show your_msg_library/msg/YourMessageType
-#ros2 topic pub bluerov2/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
+#ros2 topic pub PID/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
 
 import rclpy
 from rclpy.node import Node
@@ -53,14 +53,14 @@ class PIDdepthNode(Node):
         # self.kd = 27
         
         # Masking tape robot/double O/4lights
-        # self.kp = 45
-        # self.ki = 7
-        # self.kd = 18
-        
-        # AUV with the sticker
-        self.kp = 55
+        self.kp = 45
         self.ki = 7
-        self.kd = 15
+        self.kd = 18
+        
+        # # AUV with the sticker
+        # self.kp = 55
+        # self.ki = 7
+        # self.kd = 15
         
         self.max_integral = 4.0
         self.min_output = -100.0
@@ -122,6 +122,9 @@ class PIDdepthNode(Node):
         if self.depth is not None and self.timestamp - self.prev_time > 0:
             depth_correction = self.compute(self.depth - self.desired_depth, self.timestamp - self.prev_time)
             movement = ManualControl()
+            movement.x = np.inf
+            movement.y = np.inf
+            movement.r = np.inf
             movement.z = depth_correction
             # self.get_logger().info(f'\n DEPTHHHHCurrent Power: {depth_correction}/100\nDepth: {self.depth}')
             
