@@ -33,10 +33,8 @@ setup(
                             "pid_depth = intro_to_ros.pid_depth:main",
                             "pid_heading = intro_to_ros.pid_heading:main",
                             "camera_subscriber = intro_to_ros.camera_subscriber:main",
-                            "YOLO = intro_to_ros.YOLO:main",
-                            "camera_subscriber = intro_to_ros.camera_subscriber:main",
-                            "lane_subscriber = intro_to_ros.lane_subscriber:main",
-                            "testitall = intro_to_ros.Statebetter:main",
+                            "YOLOmovement = intro_to_ros.YOLOmovement:main",
+                            "YOLO_subscriber = intro_to_ros.YOLO_subscriber:main",
                             "movement = intro_to_ros.movement:main"
         ],
     },

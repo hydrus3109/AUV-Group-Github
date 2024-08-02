@@ -15,7 +15,6 @@
 from enum import Enum, auto
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image, Imu, Range
 from mavros_msgs.msg import ManualControl, Altitude, OverrideRCIn
 from std_msgs.msg import Int16, Float32, Bool
 import numpy as np
@@ -46,7 +45,6 @@ class Movement(Node):
         self.IMG_heading = None
         self.distance_to_opponent = None 
         self.current_depth = None
-        self.lights_on = 10
         self.current_state = State.SCANNING
         self.scan_counter = 0
         self.robot_heading = None
@@ -74,7 +72,6 @@ class Movement(Node):
         self.get_logger().info(f"distance : {self.distance_to_opponent}")
         if(self.distance_to_opponent is not None and self.distance_to_opponent < self.MIN_DISTANCE_TO_OPPONENT):
             self.flash()
-            self.get_logger().info("bruh lights on cuh")
 
     def targetted_callback(self, msg):
         self.target_found = msg.data
@@ -88,7 +85,7 @@ class Movement(Node):
             self.direct_manual_publisher.publish(movement)
         
         desired_depth = Altitude()
-        desired_depth.relative = self.MAX_DEPTH   # We want to go to the maximum possible depth in our range
+        desired_depth.relative = self.MIN_DEPTH   # We want to go to the maximum possible depth in our range
         self.PID_desired_depth_publisher.publish(desired_depth)
         
         newheading = Int16()
@@ -134,7 +131,6 @@ class Movement(Node):
         self.get_logger().info("LIGHTS CALLED") 
 
         #sets up a timer, lights_on is a counter, each 10 frames the light either turns on or turns off
-        self.lights_on += 1
         
         RCmovement = OverrideRCIn()
         
