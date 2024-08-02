@@ -120,8 +120,16 @@ class YOLOSubscriber(Node):
             return
         self.get_logger().info("Yolo Found")
         boxes = results[0].boxes
-        coords= boxes.xyxy.numpy().squeeze()
-        xcenter =(coords[0]+coords[2])/2
+        conf = boxes.conf.numpy().squeeze()
+        confidx = -1
+        bestconf = 0
+        for i in range(len(conf)):
+            if conf[i] > bestconf and conf[i] > 0.6:
+                bestconf = conf[i]
+                confidx = i
+        if confidx != -1:
+            coords= boxes.xyxy.numpy().squeeze()[confidx]
+            xcenter =(coords[0]+coords[2])/2
         
         if (self.heading != None) and (xcenter != None):
             desired_heading = int(FOV_HOR*(xcenter-image.shape[1]/2)/image.shape[1])
