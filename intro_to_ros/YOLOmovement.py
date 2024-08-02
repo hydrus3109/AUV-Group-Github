@@ -25,10 +25,10 @@ class State(Enum):
     CHASE = auto()
 
 class Movement(Node):
-    MIN_DEPTH = 0.3                          #Minimum depth we can dive
+    MIN_DEPTH = 0.4                         #Minimum depth we can dive
     MAX_DEPTH = 0.8                           #Maximum depth we can dive
     MIN_DISTANCE_TO_OPPONENT = 1                #Distance to opponent before we can shoot
-    START_HEADING = 90
+    START_HEADING = 40
     def __init__(self):
         super().__init__('state_better')
         self.IMG_heading_subscriber     = self.create_subscription(Int16   ,'img/desired_heading', self.IMG_heading_callback, 10)
@@ -83,7 +83,10 @@ class Movement(Node):
         #moves forward slowly
         if (self.scan_counter <= 10):
             movement = ManualControl()
-            movement.x = 20.0
+            movement.x = 30.0
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         
         desired_depth = Altitude()
@@ -100,9 +103,12 @@ class Movement(Node):
         if (self.scan_counter > 10):
             movement = ManualControl()
             movement.x = 0.0001
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         
-            if self.scan_counter > 50:
+            if self.scan_counter > 30:
                 self.scan_counter = 0
 
     def chase(self):
@@ -116,6 +122,9 @@ class Movement(Node):
             # Moving behavior towards the opponent
             movement = ManualControl()
             movement.x = 30.0  # Move forward
+            movement.y = np.inf
+            movement.z = np.inf
+            movement.r = np.inf
             self.direct_manual_publisher.publish(movement)
         # else:
         #     newheading = Int16()

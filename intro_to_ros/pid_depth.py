@@ -53,7 +53,7 @@ class PIDdepthNode(Node):
         # self.kd = 27
         
         # Masking tape robot/double O/4lights
-        self.kp = 45
+        self.kp = 47
         self.ki = 7
         self.kd = 18
         

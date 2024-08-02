@@ -27,8 +27,11 @@ class State(Enum):
 class Movement(Node):
     MIN_DEPTH = 0.4                          #Minimum depth we can dive
     MAX_DEPTH = 0.8                           #Maximum depth we can dive
-    MIN_DISTANCE_TO_OPPONENT = 1                #Distance to opponent before we can shoot
-    START_HEADING = 90
+    MIN_DISTANCE_TO_OPPONENT = 2                #Distance to opponent before we can shoot
+    START_HEADING = 45
+    CHANGE_THIS_START_HEADING = 225
+    
+    #95, 275
     def __init__(self):
         super().__init__('state_better')
         self.IMG_heading_subscriber     = self.create_subscription(Int16   ,'img/desired_heading', self.IMG_heading_callback, 10)
@@ -47,6 +50,7 @@ class Movement(Node):
         self.current_depth = None
         self.current_state = State.SCANNING
         self.scan_counter = 0
+        self.time_counter = 0
         self.robot_heading = None
         
         self.publisher_timer = self.create_timer(0.2, self.run)
@@ -65,12 +69,9 @@ class Movement(Node):
              
     def AT_distance_callback(self, msg):
         self.get_logger().info("AT distance callback")
-        if(self.target_found):
-            self.distance_to_opponent = msg.data
-        else:
-            self.distance_to_opponent = None
+        self.distance_to_opponent = msg.data
         self.get_logger().info(f"distance : {self.distance_to_opponent}")
-        if(self.distance_to_opponent is not None and self.distance_to_opponent < self.MIN_DISTANCE_TO_OPPONENT):
+        if(self.distance_to_opponent is not None and self.distance_to_opponent <= self.MIN_DISTANCE_TO_OPPONENT):
             self.flash()
 
     def targetted_callback(self, msg):
@@ -79,9 +80,9 @@ class Movement(Node):
     def scan(self):
         """scanning behaviour for finding other robot"""
         #moves forward slowly
-        if (self.scan_counter <= 10):
+        if (self.scan_counter <= 20):
             movement = ManualControl()
-            movement.x = 20.0
+            movement.x = 50.0
             movement.y = np.inf
             movement.z = np.inf
             movement.r = np.inf
@@ -96,9 +97,10 @@ class Movement(Node):
         self.PID_desired_heading_publisher.publish(newheading)
         
         self.scan_counter += 1
+        self.time_counter += 1
         #self.get_logger().info(f"{self.scan_counter}")
         
-        if (self.scan_counter > 10):
+        if (self.scan_counter > 20):
             movement = ManualControl()
             movement.x = 0.0001
             movement.y = np.inf
@@ -108,7 +110,17 @@ class Movement(Node):
         
             if self.scan_counter > 50:
                 self.scan_counter = 0
-
+        #self.get_logger().info(f"timer: {self.time_counter}")
+        if(self.time_counter > 400):
+            self.START_HEADING = (self.CHANGE_THIS_START_HEADING + 180)%360
+            self.get_logger().info("Turning Back")
+            #self.scan_counter = 20
+        if(self.time_counter > 600):
+            self.START_HEADING = self.CHANGE_THIS_START_HEADING
+            self.time_counter = 0
+            #self.scan_counter = 20
+        
+               
     def chase(self):
         '''Implement moving behavior towards the opponent'''
                             # sets our PID heading to the angle we detected the AprilTag/model
@@ -143,7 +155,7 @@ class Movement(Node):
         
         RCmovement = OverrideRCIn()
         
-        for i in range(5):
+        for i in range(2):
             RCmovement.channels[8] = 2000
             RCmovement.channels[9] = 2000 
             self.direct_lights_publisher.publish(RCmovement)

@@ -107,6 +107,7 @@ class CameraSubscriber(Node):
     #publish all apriltag stuff
     def send_april_tags(self, img, tags):
         for tag in tags:
+            #if tag.tag_id == 10 or tag.tag_id == 3 or tag.tag_id == 8 or tag.tag_id == 25:
             self.x_angle = self.calculate_rel_horizontal_angle(img, tag)
             self.y_angle = self.calculate_rel_verticle_angle(img, tag)
             self.z_distance = self.calculate_distance(img, tag)
@@ -116,7 +117,7 @@ class CameraSubscriber(Node):
             self.distance_publisher.publish(self.AT_distance_message)
             
             if (self.heading != None) and (self.x_angle != None):
-                self.AT_heading_message.data = self.heading + int(self.x_angle)
+                self.AT_heading_message.data = int(self.heading +self.x_angle )
                 # self.get_logger().info(f"relative heading: {int(self.x_angle)}")
                 self.IMG_heading_publisher.publish(self.AT_heading_message)
      
@@ -127,13 +128,10 @@ class CameraSubscriber(Node):
         self.Done = False
         
         img = self.bridge.imgmsg_to_cv2(msg)
-        
-        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
-        
-        imgwidth = np.shape(img)[1]
-        imgheight = np.shape(img)[0]
-        # img = img[int(imgheight*0.20):imgheight, 0:imgwidth]
+                
         if img.any()!=None:
+            plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
+            
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #and convert to gray
 
             tags = self.at_detector.detect(frame_gray, estimate_tag_pose=True, camera_params=[1000,1000,img.shape[1]/2,img.shape[0]/2], tag_size=0.1)
@@ -152,9 +150,9 @@ class CameraSubscriber(Node):
                 self.target_msg = Bool()
                 self.target_msg.data = False
                 self.targetted_publisher.publish(self.target_msg)
-                self.AT_heading_message.data = None
-                self.IMG_heading_publisher.publish(self.AT_heading_message)
-                pass
+                # self.AT_heading_message.data = None
+                # self.IMG_heading_publisher.publish(self.AT_heading_message)
+                self.Done = True
                 
         self.Done = True
         

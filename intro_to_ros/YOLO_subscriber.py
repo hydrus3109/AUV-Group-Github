@@ -24,7 +24,9 @@ import cv2
 import matplotlib.pyplot as plt
 from dt_apriltags import Detector
 from time import sleep
-from ultralytics import YOLO
+#import ultralytics
+#from ultralytics import 
+from intro_to_ros.yolo import *
 
 FOV_HOR = 80 
 FOV_VER = 64 
@@ -32,7 +34,9 @@ FOV_VER = 64
 
 class YOLOSubscriber(Node):
     def __init__(self):
-        super().__init__("bluerov")
+        super().__init__("yolorov")
+        self.get_logger().info("in init")
+        
         self.subscriber = self.create_subscription(Image,"bluerov2/camera",self.image_callback,10)
         self.get_logger().info("starting camera subscriber node")
         self.heading_subscriber = self.create_subscription(Int16,'bluerov2/heading',self.heading_callback,10)
@@ -64,9 +68,10 @@ class YOLOSubscriber(Node):
         self.AT_heading_message = Int16()
         self.AT_distance_message = Float32()
         self.targetting_fails = 0   
-        self.model = YOLO("intro_to_ros/best_ncnn_model")
+        self.model = init()
         self.yolo_done = True
         self.at_done = True
+        self.get_logger().info("yolo inited")
         
     def calculate_rel_horizontal_angle(self, img, tag):
         x = tag.center[0]
@@ -104,8 +109,7 @@ class YOLOSubscriber(Node):
         imgwidth = np.shape(image)[1]
         imgheight = np.shape(image)[0]
         image = image[int(imgheight*0.20):imgheight, 0:imgwidth]
-        model = YOLO("intro_to_ros/best_ncnn_model")
-        results = model(image)
+        results = predict(self.model, image)
         if results is None:
             self.get_logger().info(f"Nothing found in anything")
             self.yolo_done = True
@@ -148,7 +152,7 @@ class YOLOSubscriber(Node):
         
         img = self.bridge.imgmsg_to_cv2(msg)
         
-        # plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
+        plt.imsave("/home/kenayosh/auvc_ws/src/AUV-Group-Github/intro_to_ros/images/Camera_feed.png", img)
         
         imgwidth = np.shape(img)[1]
         imgheight = np.shape(img)[0]
@@ -210,9 +214,11 @@ class YOLOSubscriber(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = YOLOSubscriber()
-
+    node.get_logger().info("Main")
     try:
+        node.get_logger().info("try")
         rclpy.spin(node)
+        node.get_logger().info("spin")
     except KeyboardInterrupt:
         print("\nKeyboardInterrupt received, shutting down...")
     finally:
