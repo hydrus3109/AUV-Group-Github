@@ -8,8 +8,9 @@
 #ros2 run intro_to_ros exec
 
 #ros2 topic pub bluerov2/desired_depth mavros_msgs/msg/Altitude "{relative: 0.8}" 
-#ros2 topic pub bluerov2/desired_heading std_msgs/msg/Int16 "{data: 3}" 
+#ros2 topic pub img/desired_heading std_msgs/msg/Int16 "{data: 3}" 
 #ros2 topic echo /your/topic 
+#ros2 topic pub img/targetted std_msgs/msg/Bool "{data: True}"
 
 from enum import Enum, auto
 import rclpy
@@ -34,6 +35,7 @@ class Movement(Node):
         self.IMG_heading_subscriber     = self.create_subscription(Int16   ,'img/desired_heading', self.IMG_heading_callback, 10)
         self.AT_distance_subscriber     = self.create_subscription(Float32  ,"img/distance", self.AT_distance_callback, 10) #distance to the AprilTag
         self.targetted_subscriber       = self.create_subscription(Bool     ,'img/targetted', self.targetted_callback, 10) #if both AprilTag and YOLO fails
+        # self.robot_heading_subscriber   = self.create_subscription(Int16    ,'bluerov2/heading', self.robot_heading_callback)        
                 
         self.direct_manual_publisher        = self.create_publisher(ManualControl,'bluerov2/manual_control',10) #just for x and y
         self.direct_lights_publisher        = self.create_publisher(OverrideRCIn,'bluerov2/override_rc',10) #just for lights
@@ -47,12 +49,21 @@ class Movement(Node):
         self.lights_on = 10
         self.current_state = State.SCANNING
         self.scan_counter = 0
+        self.robot_heading = None
         
         self.publisher_timer = self.create_timer(0.2, self.run)
         
     def IMG_heading_callback(self, msg):
         if msg is not None:
-            self.IMG_heading = int(msg.data)    
+            self.IMG_heading = int(msg.data)   
+        else:
+            self.IMG_heading = None
+            
+    # def robot_heading_callback(self, msg):
+    #     if msg is not None:
+    #         self.robot_heading = int(msg.data)   
+    #     else:
+    #         self.robot_heading = None
              
     def AT_distance_callback(self, msg):
         self.get_logger().info("AT distance callback")
@@ -71,7 +82,7 @@ class Movement(Node):
     def scan(self):
         """scanning behaviour for finding other robot"""
         #moves forward slowly
-        if (self.scan_counter <= 500):
+        if (self.scan_counter <= 10):
             movement = ManualControl()
             movement.x = 20.0
             self.direct_manual_publisher.publish(movement)
@@ -81,50 +92,40 @@ class Movement(Node):
         self.PID_desired_depth_publisher.publish(desired_depth)
         
         newheading = Int16()
-        newheading.data = (self.START_HEADING + 180) % 360        
+        newheading.data = (self.START_HEADING)       
         self.PID_desired_heading_publisher.publish(newheading)
-        
-        # if self.lateral_offset is not None:     #make sure we stick to the lane
-        #     movement.y = min(self.lateral_offset, 20)
-        #     self.get_logger().info(f'\nCurrent Power for lateral offset: {movement.y}')
-        #     self.direct_manual_publisher.publish(movement)
-        # self.direct_manual_publisher.publish()
         
         self.scan_counter += 1
         #self.get_logger().info(f"{self.scan_counter}")
         
-        if (self.scan_counter > 500):
+        if (self.scan_counter > 10):
             movement = ManualControl()
             movement.x = 0.0001
             self.direct_manual_publisher.publish(movement)
         
-            if self.scan_counter > 2000:
+            if self.scan_counter > 50:
                 self.scan_counter = 0
 
     def chase(self):
         '''Implement moving behavior towards the opponent'''
-        newheading = Int16()                    # sets our PID heading to the angle we detected the AprilTag/model
+                            # sets our PID heading to the angle we detected the AprilTag/model
         if self.IMG_heading is not None:
-            newheading.data = self.IMG_heading
+            newheading = Int16()
+            newheading.data = int(self.IMG_heading)
             self.PID_desired_heading_publisher.publish(newheading)
-
+            
+            # Moving behavior towards the opponent
+            movement = ManualControl()
+            movement.x = 30.0  # Move forward
+            self.direct_manual_publisher.publish(movement)
+        # else:
+        #     newheading = Int16()
+        #     newheading.data = self.robot_heading + 1    
+        #     self.PID_desired_heading_publisher.publish(newheading)
+            
         msg = Altitude()
         msg.relative = (self.MAX_DEPTH + self.MIN_DEPTH)/2
         self.PID_desired_depth_publisher.publish(msg)
-
-        # Moving behavior towards the opponent
-        movement = ManualControl()
-        movement.x = 30.0  # Move forward
-        self.direct_manual_publisher.publish(movement)
-
-        #set heading according to what is found from camera subscriber
-        newheading = Int16()
-        # if(self.IMG_heading is None):
-        #     self.get_logger().info("[ERR:COOKED] IDK WHATS HAPPENING BUT TARGET HEADING IS NONE IN THE CHASE FUNCTIONNNN")
-        #     return
-        newheading.data = self.IMG_heading
-        self.PID_desired_heading_publisher.publish(newheading)
-        
 
 
     def flash(self):
@@ -149,18 +150,6 @@ class Movement(Node):
             self.direct_lights_publisher.publish(RCmovement)
             
             time.sleep(0.5)
-  
-        # if(self.lights_on > 100):
-        #     RCmovement.channels[8] = 2000
-        #     RCmovement.channels[9] = 2000   
-        #     self.get_logger().info("LIGHTS ON") 
-        #     self.direct_lights_publisher.publish(RCmovement)
-        # elif(self.lights_on > 200):
-        #     self.lights_on = 0
-        #     RCmovement.channels[8] = 1000
-        #     RCmovement.channels[9] = 1000
-        #     self.direct_lights_publisher.publish(RCmovement)
-            
         
         self.direct_lights_publisher.publish(RCmovement)
         #make sure that we stop when we're flashing the lights 
@@ -175,19 +164,14 @@ class Movement(Node):
     def update_state(self):
         # Helps transition from scanning state to chasing state
         if self.current_state == State.SCANNING:
+            self.get_logger().info("SCANNING STAGE")
             if self.target_found:
                 self.get_logger().info("---FOUND AUV, ENTERING CHASING STAGE---")
                 self.current_state = State.CHASE
 
         # Helps transition from chasing state back to scanning state if auv lost or to flashing state if auv distance is close
         elif self.current_state == State.CHASE:
-            pass
-
-        # Transitions from flashing state back to chasing state if AUV distance is too big or AUV lost
-        # elif self.current_state == State.FLASHING:
-        #     if self.distance_to_opponent is None and self.distance_to_opponent > self.MIN_DISTANCE_TO_OPPONENT:
-        #         self.get_logger().info("---AUV ESCAPED, ENTERING BACK TO CHASING STAGE---")
-        #         self.current_state = State.CHASE
+            self.get_logger().info("CHASE STAGE")
     
     def run(self):
         self.update_state()

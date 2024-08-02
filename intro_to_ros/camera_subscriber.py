@@ -144,16 +144,16 @@ class CameraSubscriber(Node):
             if len(tags) > 0:   #April tag found
                 # self.get_logger().info("FOUND AT")
                 self.send_april_tags(img, tags)
-                
                 self.target_msg = Bool()
                 self.target_msg.data = True
                 self.targetted_publisher.publish(self.target_msg)
-                
-                sleep(0.5)
+                sleep(0.3)
             else:
                 self.target_msg = Bool()
                 self.target_msg.data = False
                 self.targetted_publisher.publish(self.target_msg)
+                self.AT_heading_message.data = None
+                self.IMG_heading_publisher.publish(self.AT_heading_message)
                 pass
                 # self.get_logger().("Did not find AT")
                 

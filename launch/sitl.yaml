@@ -15,19 +15,7 @@ launch:
 - node:
     pkg: "intro_to_ros"
     exec: "armdisarm"
-    name: "arm"
-    namespace: ""
-
-- node:
-    pkg: "intro_to_ros"
-    exec: "pressure_to_depth"
-    name: "pressure_to_depth"
-    namespace: ""
-    
-- node:
-    pkg: "intro_to_ros"
-    exec: "pid_depth"
-    name: "pid_depth"
+    name: "armdisarm"
     namespace: ""
 
 - node:
@@ -35,7 +23,6 @@ launch:
     exec: "pid_heading"
     name: "pid_heading"
     namespace: ""
-
 
 - node:
     pkg: "intro_to_ros"
